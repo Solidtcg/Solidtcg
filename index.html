@@ -186,23 +186,78 @@
   <h2>📖 Tutorial — Complete Guide</h2>
 
   <h3 style="margin-top:14px;color:var(--accent);">Section 1 — Setting Up MyCollectrics Fetching (One-Time Setup)</h3>
+  <p style="margin:8px 0;font-size:12px;color:var(--muted);">
+    This setup runs a small local proxy server that fetches MyCollectrics data
+    (price history, demand pressure, supply saturation, PSA gem rate, population).
+    Instructions are split by operating system.
+  </p>
+
+  <div style="border:1px solid var(--border);border-radius:6px;padding:10px;margin:10px 0;background:var(--panel2);">
+    <h4 style="margin:0 0 8px 0;color:var(--accent);font-size:13px;">🍎 Mac Setup</h4>
+    <ol style="margin:0 0 4px 18px;color:var(--text);line-height:1.7;font-size:12px;">
+      <li><strong>Install Node.js</strong> — download the macOS installer (LTS version) from <code>https://nodejs.org</code> and run it.</li>
+      <li>Open <strong>Terminal</strong> (Spotlight search for "Terminal" or find it in Applications → Utilities).</li>
+      <li>Navigate to the folder containing this file:
+        <br><code style="background:var(--bg);padding:2px 6px;border-radius:3px;display:inline-block;margin-top:3px;">cd "/Users/YourName/Desktop/price prediction model pokemon"</code>
+        <br><span style="color:var(--muted);">Replace "YourName" with your actual user name. Keep the quotes — they handle the spaces in the folder name.</span>
+      </li>
+      <li>Install the Puppeteer dependency (this downloads a headless browser):
+        <br><code style="background:var(--bg);padding:2px 6px;border-radius:3px;display:inline-block;margin-top:3px;">npm install puppeteer</code>
+        <br><span style="color:var(--muted);">Takes 1–3 minutes the first time.</span>
+      </li>
+      <li>Start the proxy server:
+        <br><code style="background:var(--bg);padding:2px 6px;border-radius:3px;display:inline-block;margin-top:3px;">node server.js</code>
+        <br><span style="color:var(--muted);">You should see <code>✅ Pokemon TCG Price Proxy running at http://localhost:3001</code>.</span>
+      </li>
+      <li><strong>Leave the Terminal window open</strong> while using this model. Closing it stops the proxy.</li>
+      <li>To stop the proxy later, click into the Terminal window and press <code>Ctrl + C</code>.</li>
+    </ol>
+  </div>
+
+  <div style="border:1px solid var(--border);border-radius:6px;padding:10px;margin:10px 0;background:var(--panel2);">
+    <h4 style="margin:0 0 8px 0;color:var(--accent);font-size:13px;">🪟 Windows Setup (Lenovo, ThinkPad, IdeaPad, Surface, Dell, HP — any Windows PC)</h4>
+    <ol style="margin:0 0 4px 18px;color:var(--text);line-height:1.7;font-size:12px;">
+      <li><strong>Install Node.js</strong> — go to <code>https://nodejs.org</code>, click the green button labeled "LTS" (it will say "Windows Installer .msi"). Run the downloaded installer with default settings.</li>
+      <li>Open <strong>PowerShell</strong> (recommended) or <strong>Command Prompt</strong>:
+        <br><span style="color:var(--muted);">Press the Windows key, type "PowerShell", press Enter. Or right-click the Start button → Windows PowerShell.</span>
+      </li>
+      <li>Verify Node.js installed correctly:
+        <br><code style="background:var(--bg);padding:2px 6px;border-radius:3px;display:inline-block;margin-top:3px;">node --version</code>
+        <br><span style="color:var(--muted);">You should see something like <code>v20.10.0</code>. If you see "not recognized", close PowerShell and reopen it — Windows needs a fresh window after installing Node.js.</span>
+      </li>
+      <li>Navigate to the folder containing this file:
+        <br><code style="background:var(--bg);padding:2px 6px;border-radius:3px;display:inline-block;margin-top:3px;">cd "C:\Users\YourName\Desktop\price prediction model pokemon"</code>
+        <br><span style="color:var(--muted);">Replace "YourName" with your actual Windows user name. The quotes are required because the folder name has spaces.</span>
+      </li>
+      <li>Install the Puppeteer dependency:
+        <br><code style="background:var(--bg);padding:2px 6px;border-radius:3px;display:inline-block;margin-top:3px;">npm install puppeteer</code>
+        <br><span style="color:var(--muted);">Takes 1–3 minutes the first time. You may see Windows Defender SmartScreen prompts — allow them. Puppeteer downloads a bundled Chrome browser (~300 MB).</span>
+      </li>
+      <li>Start the proxy server:
+        <br><code style="background:var(--bg);padding:2px 6px;border-radius:3px;display:inline-block;margin-top:3px;">node server.js</code>
+        <br><span style="color:var(--muted);">You should see <code>✅ Pokemon TCG Price Proxy running at http://localhost:3001</code>.</span>
+      </li>
+      <li>If Windows Firewall pops up asking to allow Node.js network access, click <strong>Allow access</strong>.</li>
+      <li><strong>Leave the PowerShell window open</strong> while using this model. Closing it stops the proxy.</li>
+      <li>To stop the proxy later, click into the PowerShell window and press <code>Ctrl + C</code>.</li>
+    </ol>
+  </div>
+
+  <h4 style="margin-top:14px;color:var(--accent);font-size:13px;">After Setup — Both Platforms</h4>
   <ol style="margin:8px 0 14px 18px;color:var(--text);line-height:1.7;font-size:12px;">
-    <li><strong>Install Node.js</strong> if you don't have it — download from <code>nodejs.org</code> (use the LTS version).</li>
-    <li>Open <strong>Terminal</strong> (Mac) or <strong>Command Prompt</strong> (Windows).</li>
-    <li>Navigate to this folder. On Mac:
-      <br><code style="background:var(--panel2);padding:2px 6px;border-radius:3px;">cd "/Users/yourname/Desktop/price prediction model pokemon"</code>
-    </li>
-    <li>Install Puppeteer (this downloads a headless browser that MyCollectrics needs):
-      <br><code style="background:var(--panel2);padding:2px 6px;border-radius:3px;">npm install puppeteer</code>
-      <br><span style="color:var(--muted);">This takes about 1–3 minutes the first time.</span>
-    </li>
-    <li>Start the proxy server:
-      <br><code style="background:var(--panel2);padding:2px 6px;border-radius:3px;">node server.js</code>
-      <br><span style="color:var(--muted);">You should see <code>✅ Pokemon TCG Price Proxy running at http://localhost:3001</code>.</span>
-    </li>
-    <li><strong>Leave that Terminal window open</strong> while using this model. Closing it stops the proxy.</li>
-    <li>Refresh this page. The status above should change from <span style="color:var(--red);">🔴 Proxy OFF</span> to <span style="color:var(--green);">🟢 Local proxy ON</span>.</li>
+    <li>Refresh this page in your browser.</li>
+    <li>The status indicator at the very top should change from <span style="color:var(--red);">🔴 Proxy OFF</span> to <span style="color:var(--green);">🟢 Local proxy ON · eBay sold available</span>.</li>
+    <li>Click <strong>📊 MyCollectrics</strong> in the form to fetch live data for any card.</li>
   </ol>
+
+  <h4 style="margin-top:14px;color:var(--accent);font-size:13px;">Troubleshooting — Both Platforms</h4>
+  <ul style="margin:8px 0 14px 18px;color:var(--text);line-height:1.7;font-size:12px;">
+    <li><strong>"Port already in use" or "EADDRINUSE":</strong> the server now auto-kills stale processes on startup. If it still fails, restart your computer.</li>
+    <li><strong>"node is not recognized":</strong> Node.js isn't installed correctly or PowerShell / Terminal hasn't picked it up. Close all PowerShell / Terminal windows and reopen.</li>
+    <li><strong>Status stays 🔴 Proxy OFF after starting server.js:</strong> make sure the Terminal / PowerShell window shows the running server message. Refresh the browser page (Ctrl + R on Windows, Cmd + R on Mac).</li>
+    <li><strong>Antivirus or firewall blocks the proxy:</strong> on Windows, allow Node.js through Windows Defender. The server only listens on localhost (your own computer), so it's not exposed to the internet.</li>
+    <li><strong>MyCollectrics fetch fails after proxy is on:</strong> MyCollectrics may have changed their site layout, rate-limited your IP, or be temporarily down. Wait a few minutes and try again.</li>
+  </ul>
 
   <h3 style="margin-top:14px;color:var(--accent);">Section 2 — Predicting a Single Card's Price</h3>
   <ol style="margin:8px 0 14px 18px;color:var(--text);line-height:1.7;font-size:12px;">
