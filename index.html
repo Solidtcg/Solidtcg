@@ -1,0 +1,3752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Pokemon TCG Price Prediction Model</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel2: #1f232c;
+    --border: #2a2f3a;
+    --text: #e6e8ee;
+    --muted: #8a93a6;
+    --accent: #ffcb05;
+    --green: #4ade80;
+    --red: #ef4444;
+    --blue: #7ab8e8;
+    --grn: #9bc995;
+    --org: #e8a67a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px;
+    background: var(--bg); color: var(--text);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13px; line-height: 1.5;
+  }
+  h1 { margin: 0 0 6px 0; font-size: 22px; color: var(--accent); }
+  h2 { margin: 0 0 14px 0; font-size: 14px; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; }
+  .sub { color: var(--muted); margin-bottom: 24px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 1000px) { .grid { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 22px;
+  }
+  label { display: block; margin-bottom: 16px; }
+  label .lbl {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 11px; color: var(--muted); margin-bottom: 4px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  label .hint { color: #5e677b; font-size: 10px; text-transform: none; letter-spacing: 0; }
+  label .score-val { color: var(--accent); font-weight: 700; font-size: 14px; }
+  input[type=text], input[type=number], select {
+    width: 100%;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 5px;
+    font-family: inherit;
+    font-size: 13px;
+  }
+  .check-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text); margin-bottom: 14px; }
+  input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
+  button {
+    background: var(--accent); color: #111;
+    border: 0; padding: 12px 18px; border-radius: 6px;
+    font-family: inherit; font-weight: 700; cursor: pointer;
+    font-size: 13px; width: 100%;
+  }
+  button.secondary { background: var(--panel2); color: var(--text); border: 1px solid var(--border); }
+  button.danger { background: var(--red); color: white; }
+  .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 18px; }
+
+  /* === Custom gradient slider styling (matches reference) === */
+  .gradient-slider { position: relative; padding: 0; margin: 4px 0 6px 0; }
+  .gradient-track {
+    height: 18px;
+    border-radius: 9px;
+    position: relative;
+    background: linear-gradient(90deg, var(--blue) 0%, var(--blue) 25%, var(--grn) 35%, var(--grn) 60%, var(--org) 75%, var(--org) 100%);
+  }
+  .gradient-track.reverse {
+    background: linear-gradient(90deg, var(--org) 0%, var(--org) 25%, var(--grn) 35%, var(--grn) 60%, var(--blue) 75%, var(--blue) 100%);
+  }
+  .gradient-input {
+    -webkit-appearance: none; appearance: none;
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 18px;
+    background: transparent;
+    margin: 0; padding: 0;
+    cursor: pointer;
+  }
+  .gradient-input::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 14px; height: 26px; margin-top: -4px;
+    background: #4a5266;
+    border-radius: 4px;
+    border: 2px solid #fff;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  }
+  .gradient-input::-moz-range-thumb {
+    width: 14px; height: 26px;
+    background: #4a5266;
+    border-radius: 4px;
+    border: 2px solid #fff;
+    cursor: pointer;
+  }
+  .tick-row {
+    display: flex; justify-content: space-between;
+    font-size: 10px; color: var(--muted); margin-top: 4px;
+    padding: 0 4px;
+  }
+  .tick-row.labels { color: #5e677b; font-size: 9px; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .bubble {
+    position: absolute; top: -22px;
+    background: #fff; color: #111;
+    font-size: 11px; font-weight: 700;
+    padding: 2px 8px; border-radius: 10px;
+    transform: translateX(-50%);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+
+  .big-price {
+    font-size: 36px; color: var(--accent);
+    text-align: center; padding: 18px; margin: 14px 0;
+    background: var(--panel2); border-radius: 8px;
+    border: 1px solid var(--border);
+    font-weight: 700;
+  }
+  .classification {
+    text-align: center; font-size: 18px; font-weight: 700;
+    padding: 10px; border-radius: 6px; margin-bottom: 14px;
+  }
+  .c-ELITE { background: #4c1d95; color: #fff; }
+  .c-CHASE { background: #1e40af; color: #fff; }
+  .c-STRONG { background: #166534; color: #fff; }
+  .c-MID { background: #78350f; color: #fff; }
+  .c-WEAK { background: #1f232c; color: var(--muted); border: 1px solid var(--border); }
+
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .stat { background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 10px; text-align: center; }
+  .stat .label { font-size: 10px; color: var(--muted); text-transform: uppercase; }
+  .stat .value { font-size: 18px; font-weight: 700; color: var(--accent); margin-top: 2px; }
+
+  .pillar-bar {
+    display: grid; grid-template-columns: 110px 1fr 50px; gap: 10px; align-items: center;
+    margin: 5px 0;
+  }
+  .pillar-bar .name { color: var(--muted); font-size: 11px; }
+  .pillar-bar .bar { background: var(--panel2); border-radius: 4px; height: 12px; overflow: hidden; }
+  .pillar-bar .fill { background: var(--accent); height: 100%; transition: width 0.2s; }
+  .pillar-bar .val { text-align: right; font-size: 11px; color: var(--text); }
+
+  .result-row {
+    display: flex; justify-content: space-between;
+    padding: 4px 0; border-bottom: 1px dashed var(--border); font-size: 12px;
+  }
+  .result-row:last-child { border-bottom: 0; }
+  .result-row .k { color: var(--muted); }
+  .result-row .v { color: var(--text); font-weight: 600; }
+
+  h3 { margin: 18px 0 8px 0; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .mini-note { color: var(--muted); font-size: 11px; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; }
+  th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 10px; }
+  tr:hover td { background: var(--panel2); }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+  .delta-pos { color: var(--green); }
+  .delta-neg { color: var(--red); }
+  .delete-btn { background: transparent; border: 0; color: var(--red); cursor: pointer; padding: 2px 6px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<h1>🎴 Pokemon TCG Price Prediction Model</h1>
+<div class="sub">4 pillars · Pokemon · Art · Supply saturation · Demand pressure → predicted price</div>
+<div id="proxy-status" class="mini-note" style="margin-bottom: 8px;"></div>
+
+<button onclick="toggleTutorial()" id="tutorial_toggle"
+        style="background:var(--panel2);border:1px solid var(--border);color:var(--text);
+               padding:8px 14px;border-radius:6px;cursor:pointer;font-size:12px;
+               margin-bottom:16px;font-family:inherit;">
+  📖 How to use this — full tutorial
+</button>
+
+<div id="tutorial_panel" class="panel" style="display:none;margin-bottom:20px;">
+  <h2>📖 Tutorial — Complete Guide</h2>
+
+  <h3 style="margin-top:14px;color:var(--accent);">Section 1 — Setting Up MyCollectrics Fetching (One-Time Setup)</h3>
+  <ol style="margin:8px 0 14px 18px;color:var(--text);line-height:1.7;font-size:12px;">
+    <li><strong>Install Node.js</strong> if you don't have it — download from <code>nodejs.org</code> (use the LTS version).</li>
+    <li>Open <strong>Terminal</strong> (Mac) or <strong>Command Prompt</strong> (Windows).</li>
+    <li>Navigate to this folder. On Mac:
+      <br><code style="background:var(--panel2);padding:2px 6px;border-radius:3px;">cd "/Users/yourname/Desktop/price prediction model pokemon"</code>
+    </li>
+    <li>Install Puppeteer (this downloads a headless browser that MyCollectrics needs):
+      <br><code style="background:var(--panel2);padding:2px 6px;border-radius:3px;">npm install puppeteer</code>
+      <br><span style="color:var(--muted);">This takes about 1–3 minutes the first time.</span>
+    </li>
+    <li>Start the proxy server:
+      <br><code style="background:var(--panel2);padding:2px 6px;border-radius:3px;">node server.js</code>
+      <br><span style="color:var(--muted);">You should see <code>✅ Pokemon TCG Price Proxy running at http://localhost:3001</code>.</span>
+    </li>
+    <li><strong>Leave that Terminal window open</strong> while using this model. Closing it stops the proxy.</li>
+    <li>Refresh this page. The status above should change from <span style="color:var(--red);">🔴 Proxy OFF</span> to <span style="color:var(--green);">🟢 Local proxy ON</span>.</li>
+  </ol>
+
+  <h3 style="margin-top:14px;color:var(--accent);">Section 2 — Predicting a Single Card's Price</h3>
+  <ol style="margin:8px 0 14px 18px;color:var(--text);line-height:1.7;font-size:12px;">
+    <li>In the <strong>Card Input</strong> panel on the left, select the <strong>Set</strong> from the dropdown (e.g. "Twilight Masquerade").</li>
+    <li>Pick a <strong>Rarity</strong>. The card dropdown below populates with every card in that set and rarity.</li>
+    <li>Pick a specific <strong>Card</strong>. The card image appears below it.</li>
+    <li>Click <strong>📊 MyCollectrics</strong> to auto-fill: current price, demand pressure, supply saturation, gem rate, and PSA 10 population. A price-history chart appears under the image.</li>
+    <li>Adjust the <strong>Art tier</strong> (slider 0–100) based on how visually striking the artwork is.</li>
+    <li>Click <strong>🎯 Auto</strong> next to the Pokemon tier dropdown — it will infer the tier from the card name automatically.</li>
+    <li>If the card is graded, pick the grade (e.g. "PSA 10 Gem Mint") from the Grade dropdown.</li>
+    <li>Check any active <strong>catalysts</strong> (anniversary year, Pokemon Presents announcement, reprint risk, etc.).</li>
+    <li>Click <strong>📊 Predict</strong>. The right panel shows: predicted price, confidence band, classification (ELITE / CHASE / STRONG / MID / WEAK), and projections for +1 month / +3 months / +6 months / +1 year.</li>
+  </ol>
+
+  <h3 style="margin-top:14px;color:var(--accent);">Section 3 — Building Your Portfolio</h3>
+  <ol style="margin:8px 0 14px 18px;color:var(--text);line-height:1.7;font-size:12px;">
+    <li>After predicting a card, click <strong>➕ Add to portfolio</strong> to track it.</li>
+    <li>In the Portfolio table, fill in the <strong>Paid</strong> column for each card so the model can compute your Profit / Loss.</li>
+    <li>When you sell a card, fill in the <strong>Sold</strong> column. The card stays in the portfolio but is flagged as sold.</li>
+    <li>Click <strong>🔄 Refresh prices</strong> periodically to pull the latest market prices and update predictions.</li>
+    <li>Click <strong>📥 Import Collectr CSV</strong> to bulk-import an existing collection from Collectr's CSV export.</li>
+    <li>Click <strong>💾 Backup all (JSON)</strong> regularly to save your data — localStorage can be cleared.</li>
+  </ol>
+
+  <h3 style="margin-top:14px;color:var(--accent);">Section 4 — Calibration (Making the Model More Accurate)</h3>
+  <ol style="margin:8px 0 14px 18px;color:var(--text);line-height:1.7;font-size:12px;">
+    <li>For cards you've sold or know the actual market price of, fill in the <strong>Actual</strong> column in the portfolio table.</li>
+    <li>Aim for at least 15 cards with real sold prices before calibrating.</li>
+    <li>Click <strong>🔬 Calibrate weights</strong>. The model grid-searches across pillar weights to minimize prediction error.</li>
+    <li>Review the suggested new weights. If they look reasonable, click <strong>Apply</strong>. Otherwise click <strong>Cancel</strong>.</li>
+    <li>Calibration improves the model's accuracy for your specific market preferences.</li>
+  </ol>
+
+  <h3 style="margin-top:14px;color:var(--accent);">Section 5 — Simulation Mode (Paper Trading)</h3>
+  <ol style="margin:8px 0 14px 18px;color:var(--text);line-height:1.7;font-size:12px;">
+    <li>Scroll to the <strong>🎮 Simulation Mode</strong> panel.</li>
+    <li>Click <strong>🎯 Start / Reset</strong> and enter starting capital (e.g. S$10,000).</li>
+    <li>Predict any card normally, then click <strong>🎮 Simulation Buy</strong> instead of Add to portfolio. The model snapshots all predictions at buy time.</li>
+    <li>Come back days or weeks later, click <strong>🔄 Refresh prices</strong> in the simulation panel.</li>
+    <li>The Verdict column shows whether the model's prediction at that elapsed time matched reality — <code>✅ on target</code>, <code>📈 beat by X%</code>, or <code>📉 below by X%</code>.</li>
+    <li>This is your validation loop — over a few weeks, you'll see whether the model is genuinely useful or just guessing.</li>
+  </ol>
+
+  <h3 style="margin-top:14px;color:var(--accent);">Section 6 — Pack Expected Value Calculator</h3>
+  <ol style="margin:8px 0 14px 18px;color:var(--text);line-height:1.7;font-size:12px;">
+    <li>Pick a Set in the Card Input panel.</li>
+    <li>Click <strong>📦 Pack Expected Value</strong>.</li>
+    <li>Enter the pack cost in SGD (most modern packs are S$7–12).</li>
+    <li>The model fetches sample prices from each chase rarity in the set and computes the Expected Value per pack.</li>
+    <li>Verdict — if Expected Value &gt; Pack Cost, ripping is profitable on average. If less, buy singles instead.</li>
+  </ol>
+
+  <h3 style="margin-top:14px;color:var(--accent);">Section 7 — Understanding the Pillars</h3>
+  <ul style="margin:8px 0 14px 18px;color:var(--text);line-height:1.7;font-size:12px;">
+    <li><strong>Pillar 1 — Art tier (0–100):</strong> 0 = minimalist, 50 = detailed, 100 = painterly. The most heavily weighted identity pillar (24%) because art drives chase prices.</li>
+    <li><strong>Pillar 2 — Pokemon tier (1–4):</strong> Tier 1 is the iconic six (Pikachu, Charizard, etc.). Tier 4 is niche / trainers.</li>
+    <li><strong>Pillar 3 — Demand pressure (0–15%):</strong> From MyCollectrics — percentage of listings selling per day. Higher = tighter market.</li>
+    <li><strong>Pillar 4 — Supply saturation shift (0–2):</strong> From MyCollectrics — 7-day vs 30-day baseline. Below 1.0 means tightening, above means loosening.</li>
+    <li><strong>Pillar 5 — PSA 10 population:</strong> Total PSA 10 copies in existence. Smaller = scarcer = higher price.</li>
+    <li><strong>Pillar 6 — Population growth rate (% per year):</strong> How fast new PSA 10 copies are being graded. Fast growth = future supply increase = price pressure.</li>
+  </ul>
+
+  <h3 style="margin-top:14px;color:var(--accent);">Section 8 — Classification Labels</h3>
+  <p style="margin:8px 0 14px 0;font-size:12px;color:var(--text);">
+    Composite score (weighted sum of all pillars) maps to a classification:
+  </p>
+  <ul style="margin:8px 0 14px 18px;color:var(--text);line-height:1.7;font-size:12px;">
+    <li><strong style="color:var(--green);">ELITE</strong> (composite ≥ 0.80): top-tier chase, projected to appreciate strongly.</li>
+    <li><strong style="color:var(--accent);">CHASE</strong> (≥ 0.65): solid chase card with good fundamentals.</li>
+    <li><strong style="color:var(--text);">STRONG</strong> (≥ 0.50): meaningful long-term holder.</li>
+    <li><strong style="color:var(--muted);">MID</strong> (≥ 0.35): middle-of-the-pack card. Limited upside.</li>
+    <li><strong style="color:var(--red);">WEAK</strong> (&lt; 0.35): bulk / unwanted. Flat at best.</li>
+  </ul>
+
+  <h3 style="margin-top:14px;color:var(--accent);">Tips and Best Practices</h3>
+  <ul style="margin:8px 0 14px 18px;color:var(--text);line-height:1.7;font-size:12px;">
+    <li>Use the <strong>Confidence score</strong> as your trust meter. HIGH means the prediction has real data behind it; LOW means it's mostly a guess.</li>
+    <li>For cards from very new sets, the Pokemon TCG API may not have prices yet — use MyCollectrics or enter the price manually.</li>
+    <li>Refresh prices weekly to keep your portfolio current and feed the similarity-matching model with fresh history.</li>
+    <li>Back up your data (💾 Backup all) before clearing browser cache or switching devices.</li>
+    <li>Pokemon prices are sticky — predictions almost never project sharp drops unless a clear hype correction is detected.</li>
+  </ul>
+
+  <div style="text-align:center;margin-top:14px;">
+    <button onclick="toggleTutorial()" class="secondary"
+            style="padding:6px 14px;font-size:11px;">Close tutorial</button>
+  </div>
+</div>
+
+<div class="grid">
+
+  <!-- ============ INPUT ============ -->
+  <div class="panel">
+    <h2>Card input</h2>
+
+    <label>
+      <span class="lbl">Card name</span>
+      <input id="name" type="text" placeholder="pick a set + rarity + card, or type manually" />
+    </label>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+      <label>
+        <span class="lbl">Pillar 0 — Set</span>
+        <select id="set_key" onchange="onSetChange()">
+          <option value="">— select set —</option>
+        </select>
+      </label>
+      <label>
+        <span class="lbl">Rarity</span>
+        <select id="rarity_key" onchange="onRarityChange()">
+          <option value="">— select rarity —</option>
+        </select>
+      </label>
+    </div>
+    <div id="rarity_info" class="mini-note" style="margin-top:-8px; margin-bottom:12px;"></div>
+
+    <label id="card_pick_section" style="display:none;">
+      <span class="lbl">Card in this rarity <span class="hint" id="card_count_hint"></span></span>
+      <select id="card_pick" onchange="onCardPick()">
+        <option value="">— pick a card —</option>
+      </select>
+    </label>
+
+    <div id="card_image_preview" style="display:none; text-align:center; margin: 6px 0 8px 0;"></div>
+    <div id="mc_chart_preview" style="display:none; margin: 0 0 14px 0;"></div>
+
+    <label>
+      <span class="lbl">Current price (S$) <span class="hint">market price right now</span></span>
+      <div style="display:flex; gap:6px;">
+        <input id="current_price" type="number" value="" min="0" step="0.01" style="flex:1;" placeholder="auto-fills when you pick a card" />
+        <button class="secondary" type="button" onclick="autoFetchPrice()"
+                style="width:auto; padding:6px 12px; font-size:11px;">🔍 Fetch</button>
+        <button class="secondary" type="button" onclick="applyMycollectricsData()"
+                style="width:auto; padding:6px 12px; font-size:11px;" title="Auto-fill demand, supply, gem rate, and population from MyCollectrics">📊 MyCollectrics</button>
+      </div>
+      <div id="fetch_status" class="mini-note" style="margin-top:4px; min-height:14px;"></div>
+    </label>
+
+    <div class="check-row">
+      <input id="is_promo" type="checkbox" onchange="togglePromo()" />
+      <label for="is_promo" style="margin: 0;">Is promo card</label>
+    </div>
+
+    <!-- Pillar 1: Art -->
+    <label>
+      <span class="lbl">
+        Pillar 1 — Art tier
+        <span class="score-val"><span id="art_val">50</span>/100</span>
+      </span>
+      <input id="art_tier" type="range" min="0" max="100" value="50"
+             oninput="document.getElementById('art_val').textContent=this.value" />
+      <div class="tick-row labels"><span>minimalist</span><span>detailed</span><span>painterly</span></div>
+    </label>
+
+    <!-- Pillar 2: Pokemon Tier -->
+    <label>
+      <span class="lbl">Pillar 2 — Pokemon tier</span>
+      <div style="display:flex; gap:6px;">
+      <select id="pokemon_tier" style="flex:1;">
+        <option value="0.4" selected>— pick a tier —</option>
+        <option value="1.0">Tier 1 — Pikachu, Charizard, Gengar, Mewtwo, Mew, Umbreon</option>
+        <option value="0.7">Tier 2 — Dragonite, Greninja, Rayquaza, Gardevoir, Lugia, Gyarados, Garchomp, Eeveelutions</option>
+        <option value="0.4">Tier 3 — Recognizable (Lucario, Tyranitar, Blaziken, Metagross)</option>
+        <option value="0.1">Tier 4 — Niche / unpopular (Sinistcha, random trainers, obscure)</option>
+      </select>
+      <button class="secondary" type="button" onclick="autoRatePokemonTier()"
+              style="width:auto; padding:6px 10px; font-size:11px;" title="Infer Pokemon tier from card name">🎯 Auto</button>
+      </div>
+    </label>
+
+    <!-- Pillar 3: Demand pressure -->
+    <label>
+      <span class="lbl">Pillar 3 — Demand pressure <span class="hint">(percent — higher means more demand)</span></span>
+      <div class="gradient-slider">
+        <div class="gradient-track">
+          <div class="bubble" id="demand_bubble" style="left:50%">7.5%</div>
+        </div>
+        <input id="demand" class="gradient-input" type="range" min="0" max="15" step="0.1" value="7.5"
+               oninput="updateDemand(this.value)" />
+      </div>
+      <div class="tick-row"><span>0%</span><span>2%</span><span>5%</span><span>10%</span><span>15%</span></div>
+      <div class="tick-row labels"><span>heavy supply</span><span></span><span></span><span></span><span>very tight</span></div>
+    </label>
+
+    <!-- Pillar 4: Supply saturation -->
+    <label>
+      <span class="lbl">Pillar 4 — Supply saturation shift <span class="hint">(vs 30 day baseline — lower is better)</span></span>
+      <div class="gradient-slider">
+        <div class="gradient-track reverse">
+          <div class="bubble" id="supply_bubble" style="left:50%">1.0</div>
+        </div>
+        <input id="supply" class="gradient-input" type="range" min="0" max="2" step="0.05" value="1.0"
+               oninput="updateSupply(this.value)" />
+      </div>
+      <div class="tick-row"><span>0.0</span><span>1.0</span><span>2.0</span></div>
+      <div class="tick-row labels"><span>tightening</span><span>neutral</span><span>loosening</span></div>
+    </label>
+
+    <!-- Pillar 5: PSA 10 Population count -->
+    <label>
+      <span class="lbl">Pillar 5 — PSA 10 population count <span class="hint">total PSA 10 copies in existence</span></span>
+      <input id="pop_report" type="number" placeholder="e.g. 247" min="0" />
+    </label>
+
+    <!-- Pillar 6: Population growth rate -->
+    <label>
+      <span class="lbl">Pillar 6 — Population growth rate <span class="hint">(percent per year — how fast new copies get graded)</span></span>
+      <input id="pop_growth" type="number" step="1" placeholder="e.g. 20" min="0" max="200" />
+    </label>
+
+    <!-- Pull rate input removed — supply pillar fully covers it. -->
+    <input id="pull_rate" type="hidden" value="" />
+    <div id="pull_rate_field" style="display:none;"></div>
+
+    <!-- Grading section -->
+    <label>
+      <span class="lbl">Grade <span class="hint">leave Raw Near Mint for ungraded</span></span>
+      <select id="grade_key" onchange="onGradeChange()">
+        <option value="raw_nm" selected>Raw NM (ungraded near-mint)</option>
+        <option value="raw_lp">Raw LP (light played)</option>
+        <option value="raw_mp">Raw MP (moderately played)</option>
+        <option value="raw_hp">Raw HP (heavily played)</option>
+        <option disabled>──── PSA ────</option>
+        <option value="psa_7">PSA 7</option>
+        <option value="psa_8">PSA 8</option>
+        <option value="psa_9">PSA 9</option>
+        <option value="psa_10">PSA 10 — Gem Mint</option>
+        <option disabled>──── BGS ────</option>
+        <option value="bgs_85">BGS 8.5</option>
+        <option value="bgs_9">BGS 9</option>
+        <option value="bgs_95">BGS 9.5 — Gem Mint</option>
+        <option value="bgs_10">BGS 10 — Pristine</option>
+        <option value="bgs_bl">BGS 10 — Black Label</option>
+        <option disabled>──── CGC ────</option>
+        <option value="cgc_9">CGC 9</option>
+        <option value="cgc_95">CGC 9.5</option>
+        <option value="cgc_10m">CGC 10 — Mint</option>
+        <option value="cgc_10p">CGC 10 — Pristine</option>
+        <option value="cgc_10pp">CGC 10 — Perfect</option>
+        <option disabled>──── ACE (Singapore) ────</option>
+        <option value="ace_8">ACE 8</option>
+        <option value="ace_9">ACE 9</option>
+        <option value="ace_10">ACE 10</option>
+        <option disabled>──── SGC ────</option>
+        <option value="sgc_9">SGC 9</option>
+        <option value="sgc_95">SGC 9.5</option>
+        <option value="sgc_10">SGC 10</option>
+        <option disabled>──── CCIC (China) ────</option>
+        <option value="ccic_9">CCIC 9</option>
+        <option value="ccic_10">CCIC 10</option>
+      </select>
+    </label>
+
+    <div id="grade_info" class="mini-note" style="margin-top:-8px; margin-bottom:12px;"></div>
+
+    <label>
+      <span class="lbl">PSA gem rate (%) <span class="hint">percentage of raw cards that grade PSA 10</span></span>
+      <input id="gem_rate" type="number" step="0.1" placeholder="e.g. 12.5" min="0" max="100" oninput="onGradeChange()" />
+    </label>
+    <!-- Card language and buyer market removed — universal pricing. -->
+
+    <fieldset style="border:1px solid var(--border);border-radius:6px;padding:8px;margin:6px 0 14px 0;">
+      <legend style="padding:0 6px;font-size:10px;color:var(--muted);">Active catalysts (event-driven multipliers)</legend>
+      <div id="catalyst_box" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;"></div>
+    </fieldset>
+    <div id="gem_rate_info" class="mini-note" style="margin-top:-6px;margin-bottom:12px;"></div>
+
+    <div class="btn-row" style="grid-template-columns: 1fr 1fr;">
+      <button onclick="predict()">📊 Predict</button>
+      <button class="secondary" onclick="addToPortfolio()">➕ Add to portfolio</button>
+    </div>
+    <div class="btn-row" style="grid-template-columns: 1fr 1fr; margin-top:8px;">
+      <button class="secondary" onclick="runPackEV()">📦 Pack Expected Value</button>
+      <button class="secondary" onclick="simBuy()">🎮 Simulation Buy</button>
+    </div>
+  </div>
+
+  <!-- ============ RESULTS ============ -->
+  <div class="panel">
+    <h2>Prediction</h2>
+    <div id="results">
+      <div class="mini-note">Fill in the form on the left and click "Predict" to see the model output.</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============ SIMULATION MODE ============ -->
+<div class="panel" style="margin-top: 24px;">
+  <h2>🎮 Simulation Mode <span style="color:var(--muted);font-size:11px;font-weight:400;text-transform:none;">(paper trading — validates the model over time)</span></h2>
+  <div class="mini-note" id="sim_intro">
+    Start with hypothetical money, buy cards at today's predicted price, then come back days/weeks/months later
+    to see whether the model's forecasts panned out.
+  </div>
+
+  <div class="stat-grid" id="sim_stats" style="grid-template-columns: repeat(5, 1fr); display:none; margin-top:14px;">
+    <div class="stat"><div class="label">Started with</div><div class="value" id="sim_starting">S$0</div></div>
+    <div class="stat"><div class="label">Cash left</div><div class="value" id="sim_cash">S$0</div></div>
+    <div class="stat"><div class="label">Position value</div><div class="value" id="sim_holdings">S$0</div></div>
+    <div class="stat"><div class="label">Total P/L</div><div class="value" id="sim_pl">S$0</div></div>
+    <div class="stat"><div class="label">Days running</div><div class="value" id="sim_days">0</div></div>
+  </div>
+
+  <div style="overflow-x:auto;margin-top:14px;">
+    <table id="sim_table">
+      <thead>
+        <tr>
+          <th>Card</th>
+          <th>Bought</th>
+          <th>Days held</th>
+          <th>Buy S$</th>
+          <th>Now S$</th>
+          <th>Actual</th>
+          <th>Model predicted at buy</th>
+          <th>Verdict</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="sim_body"></tbody>
+    </table>
+  </div>
+
+  <div class="btn-row" style="grid-template-columns: repeat(3, 1fr); max-width: 600px; margin-top: 14px;">
+    <button onclick="simReset()">🎯 Start / Reset</button>
+    <button class="secondary" onclick="refreshSimPrices()">🔄 Refresh prices</button>
+    <button class="danger" onclick="simClear()">🗑 Clear all</button>
+  </div>
+</div>
+
+<!-- ============ PORTFOLIO ============ -->
+<div class="panel" style="margin-top: 24px;">
+  <h2>Portfolio</h2>
+  <div class="mini-note">Saved locally in your browser. Fill in <strong>Paid S$</strong> per card to track P/L; <strong>Sold S$</strong> when you sell.</div>
+
+  <div class="stat-grid" id="portfolio-summary" style="grid-template-columns: repeat(5, 1fr); display:none; margin-top:14px;">
+    <div class="stat"><div class="label">Invested</div><div class="value" id="sum-invested">S$0</div></div>
+    <div class="stat"><div class="label">Current value</div><div class="value" id="sum-current">S$0</div></div>
+    <div class="stat"><div class="label">Realized P/L</div><div class="value" id="sum-realized">S$0</div></div>
+    <div class="stat"><div class="label">Unrealized P/L</div><div class="value" id="sum-unrealized">S$0</div></div>
+    <div class="stat"><div class="label">Total ROI</div><div class="value" id="sum-roi">0%</div></div>
+  </div>
+
+  <div style="overflow-x: auto;">
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Set</th>
+        <th>Rarity</th>
+        <th>Class</th>
+        <th>Paid S$</th>
+        <th>Current S$</th>
+        <th>History<br><span style="color:#5e677b;font-weight:400;text-transform:none">floor / ceiling</span></th>
+        <th>Sold S$</th>
+        <th>Profit / Loss</th>
+        <th>Predicted S$</th>
+        <th>+1 month</th>
+        <th>+1 year</th>
+        <th>Actual S$<br><span style="color:#5e677b;font-weight:400;text-transform:none">for calibration</span></th>
+        <th>Err</th>
+        <th>Score</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="portfolio-body"></tbody>
+  </table>
+  </div>
+
+  <div class="btn-row" style="grid-template-columns: repeat(4, 1fr); max-width: 900px;">
+    <button id="refresh-btn" onclick="refreshPortfolioPrices()">🔄 Refresh prices</button>
+    <button onclick="importCollectrCSV()">📥 Import Collectr CSV</button>
+    <button onclick="calibrateWeights()">🔬 Calibrate weights</button>
+    <button class="secondary" onclick="exportCSV()">⬇️ Export CSV</button>
+  </div>
+  <div class="btn-row" style="grid-template-columns: repeat(4, 1fr); max-width: 900px; margin-top: 8px;">
+    <button onclick="analyzePortfolio()">🔬 Analyze portfolio</button>
+    <button class="secondary" onclick="exportAllData()">💾 Backup all (JSON)</button>
+    <button class="secondary" onclick="importAllData()">📂 Restore from backup</button>
+    <button class="danger" onclick="clearPortfolio()">🗑 Clear portfolio</button>
+  </div>
+  <div class="mini-note" style="margin-top:8px;">
+    Fill in <strong>Actual $</strong> for cards you know the real sold price of, then click Calibrate — model grid-searches the best weights to minimize prediction error.
+  </div>
+
+  <div id="calibration-results" class="panel" style="display:none; margin-top:18px; background:var(--panel2);"></div>
+</div>
+
+<script>
+/* =====================================================================
+   POKEMON TCG PRICE MODEL v3 — Matches user's measurement scales
+   Pillars:
+     1. Pokemon tier      (1-4 dropdown → 1.0 / 0.7 / 0.4 / 0.1)
+     2. Art tier          (0-100 slider → /100)
+     3. Pull rate         (1:X — skipped if promo)
+     4. Supply saturation (0.0-2.0 vs 30d baseline; 0=tightening, 2=loosening)
+     5. Demand pressure   (% — higher = tighter market)
+===================================================================== */
+
+/* === SET / RARITY PULL-RATE DATABASE ===
+   Add new sets here as you get the official pull rate chart.
+   "any" = chance of pulling any card of that rarity per pack.
+   "specific" = chance of pulling ONE specific named card of that rarity.
+   The model uses `specific` since you're tracking a specific card.
+*/
+const SET_PULL_RATES = {
+  "mega_evolution": {
+    name: "Mega Evolution",
+    rarities: {
+      DR:  { any: 5,    specific: 48,   label: "Double Rare (DR)" },
+      IR:  { any: 9,    specific: 202,  label: "Illustration Rare (IR)" },
+      UR:  { any: 12,   specific: 267,  label: "Ultra Rare (UR)" },
+      SIR: { any: 101,  specific: 1008, label: "Special Illustration Rare (SIR)" },
+      MHR: { any: 1260, specific: 2520, label: "Mega Hyper Rare (MHR)" },
+    },
+  },
+  "twilight_masquerade": {
+    name: "Twilight Masquerade",
+    rarities: {
+      IR:  { any: 13,  specific: 272, label: "Illustration Rare (IR)" },
+      UR:  { any: 15,  specific: 318, label: "Ultra Rare (UR)" },
+      AS:  { any: 20,  specific: 119, label: "ACE SPEC (AS)" },
+      SIR: { any: 86,  specific: 941, label: "Special Illustration Rare (SIR)" },
+      HR:  { any: 146, specific: 879, label: "Hyper Rare (HR)" },
+    },
+  },
+  "temporal_forces": {
+    name: "Temporal Forces",
+    rarities: {
+      IR:  { any: 13,  specific: 285, label: "Illustration Rare (IR)" },
+      UR:  { any: 15,  specific: 270, label: "Ultra Rare (UR)" },
+      AS:  { any: 20,  specific: 140, label: "ACE SPEC (AS)" },
+      SIR: { any: 86,  specific: 855, label: "Special Illustration Rare (SIR)" },
+      HR:  { any: 139, specific: 836, label: "Hyper Rare (HR)" },
+    },
+  },
+  "phantasmal_flames": {
+    name: "Phantasmal Flames",
+    rarities: {
+      DR:  { any: 5,    specific: 48,   label: "Double Rare (DR)" },
+      IR:  { any: 9,    specific: 118,  label: "Illustration Rare (IR)" },
+      UR:  { any: 12,   specific: 211,  label: "Ultra Rare (UR)" },
+      SIR: { any: 80,   specific: 400,  label: "Special Illustration Rare (SIR)" },
+      MHR: { any: 1260, specific: 1260, label: "Mega Hyper Rare (MHR)" },
+    },
+  },
+  "ascended_heroes": {
+    name: "Ascended Heroes",
+    rarities: {
+      DR:  { any: 5,   specific: 191,  label: "Double Rare (DR)" },
+      IR:  { any: 9,   specific: 293,  label: "Illustration Rare (IR)" },
+      UR:  { any: 21,  specific: 291,  label: "Ultra Rare (UR)" },
+      MAR: { any: 29,  specific: 202,  label: "Mega Attack Rare (MAR)" },
+      SIR: { any: 70,  specific: 1533, label: "Special Illustration Rare (SIR)" },
+      MHR: { any: 540, specific: 1080, label: "Mega Hyper Rare (MHR)" },
+    },
+  },
+  "destined_rivals": {
+    name: "Destined Rivals",
+    rarities: {
+      DR:  { any: 5,   specific: 86,   label: "Double Rare (DR)" },
+      IR:  { any: 12,  specific: 278,  label: "Illustration Rare (IR)" },
+      UR:  { any: 16,  specific: 344,  label: "Ultra Rare (UR)" },
+      SIR: { any: 94,  specific: 1033, label: "Special Illustration Rare (SIR)" },
+      HR:  { any: 149, specific: 894,  label: "Hyper Rare (HR)" },
+    },
+  },
+  "sv_151": {
+    name: "Scarlet & Violet — 151",
+    rarities: {
+      FE:  { any: 4,   specific: 32,   label: "Foil Energy (FE)" },
+      DR:  { any: 8,   specific: 90,   label: "Double Rare (DR)" },
+      IR:  { any: 12,  specific: 188,  label: "Illustration Rare (IR)" },
+      UR:  { any: 16,  specific: 248,  label: "Ultra Rare (UR)" },
+      SIR: { any: 32,  specific: 225,  label: "Special Illustration Rare (SIR)" },
+      HR:  { any: 51,  specific: 154,  label: "Hyper Rare (HR)" },
+    },
+  },
+  "prismatic_evolutions": {
+    name: "Prismatic Evolutions",
+    rarities: {
+      PB:  { any: 3,   specific: 302,  label: "Poké Ball Foil (PB)" },
+      UR:  { any: 13,  specific: 161,  label: "Ultra Rare (UR)" },
+      MB:  { any: 20,  specific: 1362, label: "Master Ball Foil (MB)" },
+      AS:  { any: 21,  specific: 128,  label: "ACE SPEC (AS)" },
+      SIR: { any: 45,  specific: 1440, label: "Special Illustration Rare (SIR)" },
+      HR:  { any: 180, specific: 900,  label: "Hyper Rare (HR)" },
+    },
+  },
+  "black_bolt_white_flare": {
+    name: "Black Bolt & White Flare",
+    rarities: {
+      PB:  { any: 3,   specific: 488,  label: "Poké Ball Foil (PB)" },
+      IR:  { any: 6,   specific: 848,  label: "Illustration Rare (IR)" },
+      UR:  { any: 17,  specific: 274,  label: "Ultra Rare (UR)" },
+      MB:  { any: 19,  specific: 2802, label: "Master Ball Foil (MB)" },
+      SIR: { any: 80,  specific: 1120, label: "Special Illustration Rare (SIR)" },
+      BWR: { any: 800, specific: 2400, label: "Black White Rare (BWR)" },
+    },
+  },
+  // future sets get added here
+};
+
+/* === SEED CARD LISTS by set / rarity ===
+   Partial list — only cards I'm confident about (from chart images + cards
+   you've mentioned). Add more via the "+ Custom card" option in the UI;
+   custom cards persist in localStorage and merge with seeds at runtime.
+*/
+const SEED_CARDS = {
+  phantasmal_flames: {
+    SIR: ["Charizard ex", "Mega Lopunny ex", "Dawn"],
+    MHR: ["Mega Aerodactyl ex"],
+    DR:  ["Mega Gengar ex", "Oricorio ex"],
+    IR:  ["Meowth", "Piplup"],
+    UR:  ["Empoleon ex", "Cynthia's Move"],
+  },
+  ascended_heroes: {
+    SIR: ["Mega Gengar ex", "Pikachu ex"],
+    MHR: ["Mega Drapion ex"],
+    IR:  ["Tate", "Psyduck", "Shaymin"],
+    UR:  ["Sabrina's Boss's Orders", "Ultra Ball"],
+    MAR: ["Mega Lucario ex"],
+    DR:  [],
+  },
+  mega_evolution: {
+    SIR: ["Mega Venusaur ex", "Lillie's Determination"],
+    MHR: ["Mega Lucario ex", "Mega Gardevoir ex"],
+    IR:  ["Ivysaur", "Marshadow"],
+    UR:  ["Mega Latias ex", "Buddy-Buddy Poffin"],
+    DR:  ["Mega Kangaskhan ex"],
+  },
+  twilight_masquerade: {
+    SIR: ["Greninja ex", "Carmine"],
+    HR:  ["Sinistcha ex", "Buddy-Buddy Poffin"],
+    IR:  ["Eevee", "Tatsugiri"],
+    UR:  ["Bloodmoon Ursaluna ex", "Perrin"],
+    AS:  ["Unfair Stamp", "Legacy Energy"],
+  },
+  temporal_forces: {
+    SIR: ["Iron Crown ex", "Morty's Conviction"],
+    HR:  ["Walking Wake ex", "Raging Bolt ex"],
+    IR:  ["Gastly", "Cinccino"],
+    UR:  ["Gengar ex"],
+    AS:  ["Prime Catcher", "Maximum Belt"],
+  },
+  destined_rivals: {
+    SIR: ["Team Rocket's Mewtwo ex"],
+    HR:  ["Team Rocket's Tower"],
+    IR:  ["Psyduck", "Shaymin"],
+    UR:  ["Giovanni"],
+    DR:  ["Ethan's Ho-Oh ex", "Marnie's Grimmsnarl"],
+  },
+  sv_151: {
+    SIR: ["Erika's Invitation", "Blastoise ex"],
+    HR:  ["Mew ex"],
+    IR:  ["Pikachu", "Charmander"],
+    UR:  ["Ninetales ex", "Charisma"],
+    DR:  ["Venusaur ex", "Charizard ex"],
+    FE:  ["Foil Energy"],
+  },
+  prismatic_evolutions: {
+    SIR: ["Umbreon ex"],
+    HR:  ["Pikachu ex", "Ogerpon ex"],
+    MB:  ["Espeon", "Budew"],
+    UR:  ["Friends in Paldea", "Lacey's Skill"],
+    AS:  ["Max Rod"],
+    PB:  ["Dreepy", "Earthen Vessel"],
+  },
+  black_bolt_white_flare: {
+    SIR: ["Hydreigon ex"],
+    BWR: ["Zekrom ex", "Reshiram ex", "Victini"],
+    IR:  ["Snivy", "Oshawott"],
+    UR:  ["Meloetta ex"],
+    MB:  [],
+    PB:  [],
+  },
+};
+
+/* Map our set keys → Pokemon TCG API set names (best guess for newest sets) */
+const SET_API_NAMES = {
+  phantasmal_flames: "Phantasmal Flames",
+  ascended_heroes: "Ascended Heroes",
+  mega_evolution: "Mega Evolution",
+  twilight_masquerade: "Twilight Masquerade",
+  temporal_forces: "Temporal Forces",
+  destined_rivals: "Destined Rivals",
+  sv_151: "151",
+  prismatic_evolutions: "Prismatic Evolutions",
+  black_bolt_white_flare: "Black Bolt",
+};
+
+/* ===== PACK EV CALCULATOR =====
+   For each chase rarity in a set, fetch (sampled) card prices and compute
+   Expected Value of a pack: Σ (avg_price × pack_probability). Compare to
+   pack retail cost to see if it's worth ripping vs buying singles.
+   Limited to chase rarities to keep fetch count manageable.
+*/
+// Bulk rarities to skip in Pack EV (low individual value, would just add noise)
+const PACK_EV_SKIP_RARITIES = new Set(["C", "U", "R", "RH"]);  // Common, Uncommon, Rare, Rare Holo
+
+async function calculatePackEV(setKey, packCost, opts = {}){
+  const maxPerRarity = opts.maxPerRarity || 8;
+  const onProgress = opts.onProgress || (() => {});
+
+  await ensureSetData(setKey);
+  const set = SET_PULL_RATES[setKey];
+  if (!set || !set.rarities) return null;
+
+  // First pass: count work — iterate ALL rarities, skip only bulk
+  let total = 0;
+  const work = [];
+  for (const [rk, rd] of Object.entries(set.rarities)){
+    if (PACK_EV_SKIP_RARITIES.has(rk)) continue;
+    const cards = await fetchCardsFromAPI(setKey, rk);
+    if (!cards || cards.length === 0) continue;
+    const sample = cards.slice(0, maxPerRarity);
+    work.push({ rarityKey: rk, rd, allCards: cards, sample });
+    total += sample.length;
+  }
+  if (total === 0) return { setName: set.name, packCost, rarities: [], totalEV: 0, profitLoss: -packCost, roi: -1 };
+
+  let done = 0;
+  const results = [];
+  for (const w of work){
+    const prices = [];
+    for (const card of w.sample){
+      done++;
+      onProgress(done, total, `${card.name}${card.number ? ` #${card.number}` : ""}`);
+      // Pokemon TCG API only — eBay fetching disabled
+      const apiPrice = getBestPrice(card);
+      if (apiPrice?.priceSGD > 0) prices.push(apiPrice.priceSGD);
+    }
+    if (prices.length === 0) continue;
+    const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+    const probPerPack = 1 / w.rd.any;
+    results.push({
+      rarityKey: w.rarityKey,
+      label: w.rd.label,
+      anyRate: w.rd.any,
+      specificRate: w.rd.specific,
+      cardCount: w.allCards.length,
+      sampledCount: prices.length,
+      minPrice: Math.min(...prices),
+      maxPrice: Math.max(...prices),
+      avgPrice: avg,
+      probPerPack,
+      contribution: avg * probPerPack,
+    });
+  }
+
+  const totalEV = results.reduce((a, r) => a + r.contribution, 0);
+  return {
+    setName: set.name,
+    packCost,
+    rarities: results,
+    totalEV,
+    profitLoss: totalEV - packCost,
+    roi: packCost > 0 ? (totalEV - packCost) / packCost : 0,
+  };
+}
+
+function ensurePackEVPanel(){
+  let p = document.getElementById("pack_ev_panel");
+  if (!p){
+    p = document.createElement("div");
+    p.id = "pack_ev_panel";
+    p.className = "panel";
+    p.style.marginTop = "24px";
+    document.querySelector("body").appendChild(p);
+  }
+  return p;
+}
+
+async function runPackEV(){
+  const setKey = document.getElementById("set_key").value;
+  if (!setKey){ alert("Pick a set first."); return; }
+  const setName = SET_PULL_RATES[setKey]?.name || (setKey.startsWith("api:") ? "(API set)" : setKey);
+  const costStr = prompt(`Pack cost in SGD for ${setName}?\n(Most modern packs are S$7-12)`, "8");
+  const packCost = parseFloat(costStr);
+  if (!isFinite(packCost) || packCost < 0) return;
+
+  const panel = ensurePackEVPanel();
+  panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  panel.innerHTML = `
+    <h2>📦 Pack Expected Value — ${escape(setName)}</h2>
+    <div class="mini-note">Fetching chase-rarity prices. Each card = ~5-7s via eBay sold (proxy). Total ~1-5 min depending on rarity count.</div>
+    <div id="pack_ev_progress" style="margin-top:14px;color:var(--accent);font-size:13px;">Loading…</div>
+  `;
+  const progressEl = document.getElementById("pack_ev_progress");
+  try {
+    const result = await calculatePackEV(setKey, packCost, {
+      maxPerRarity: 8,
+      onProgress: (done, total, name) => {
+        progressEl.innerHTML = `⏳ <strong>${done}/${total}</strong> · ${escape(name)}`;
+      },
+    });
+    renderPackEV(result, packCost);
+  } catch (e){
+    panel.innerHTML += `<div style="color:var(--red);margin-top:10px;">Error: ${escape(e.message)}</div>`;
+  }
+}
+
+function renderPackEV(r, packCost){
+  const panel = ensurePackEVPanel();
+  if (!r || r.rarities.length === 0){
+    panel.innerHTML = `
+      <h2>📦 Pack Expected Value — ${escape(r?.setName || "")}</h2>
+      <div class="mini-note" style="color:var(--orange);">No chase-rarity prices found for this set. Either no prices in API/eBay yet, or the set has no recognizable chase rarities.</div>`;
+    return;
+  }
+
+  const rows = r.rarities.map(x => `
+    <tr>
+      <td><span class="pill c-STRONG">${x.rarityKey}</span> ${escape(x.label)}</td>
+      <td>${x.sampledCount}/${x.cardCount}</td>
+      <td>S$${x.minPrice.toFixed(0)}–S$${x.maxPrice.toFixed(0)}</td>
+      <td><strong>S$${x.avgPrice.toFixed(2)}</strong></td>
+      <td>1:${x.anyRate}</td>
+      <td><strong>S$${x.contribution.toFixed(2)}</strong></td>
+    </tr>`).join("");
+
+  const verdictColor = r.profitLoss >= 0 ? "var(--green)" : "var(--red)";
+  const verdictIcon  = r.profitLoss >= 0 ? "📈" : "📉";
+  const sign         = r.profitLoss >= 0 ? "+" : "";
+  const verdict      = `<span style="color:${verdictColor};">${verdictIcon} ${sign}S$${r.profitLoss.toFixed(2)} (${sign}${(r.roi*100).toFixed(1)}% ROI)</span>`;
+
+  panel.innerHTML = `
+    <h2>📦 Pack Expected Value — ${escape(r.setName)}</h2>
+    <div class="stat-grid" style="grid-template-columns: 1fr 1fr 1fr;">
+      <div class="stat"><div class="label">Pack cost</div><div class="value">S$${r.packCost.toFixed(2)}</div></div>
+      <div class="stat"><div class="label">Expected value</div><div class="value">S$${r.totalEV.toFixed(2)}</div></div>
+      <div class="stat"><div class="label">Per-pack edge</div><div class="value" style="color:${verdictColor};">${sign}S$${r.profitLoss.toFixed(2)}</div></div>
+    </div>
+    <div style="text-align:center;margin-top:10px;font-size:14px;">${verdict}</div>
+    <table style="margin-top:14px;font-size:12px;">
+      <thead><tr><th>Rarity</th><th>Sampled</th><th>Range</th><th>Average price</th><th>Any pull rate</th><th>Expected value contribution</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="mini-note" style="margin-top:8px;">
+      Expected Value per pack = sum of (average price × pack probability) across chase rarities. Sampled up to 8 cards per rarity to keep the fetch fast.
+      Negative ROI = better to buy singles than rip. Positive ROI = rip away.
+      Doesn't include bulk/junk rares — those are roughly the pack cost in slop value anyway.
+    </div>
+  `;
+}
+
+/* ===== Auto-discover all Pokemon TCG sets from the API ===== */
+let __allSetsCache = null;
+
+async function fetchAllSets(){
+  if (__allSetsCache) return __allSetsCache;
+  const cached = sessionStorage.getItem("tcgapi_all_sets_v2");
+  if (cached){
+    try { __allSetsCache = JSON.parse(cached); return __allSetsCache; }
+    catch (e){}
+  }
+  try {
+    const res = await fetch("https://api.pokemontcg.io/v2/sets?orderBy=-releaseDate&pageSize=500");
+    if (!res.ok) return null;
+    const data = await res.json();
+    __allSetsCache = data.data || [];
+    sessionStorage.setItem("tcgapi_all_sets_v2", JSON.stringify(__allSetsCache));
+    return __allSetsCache;
+  } catch (e){ console.warn("fetchAllSets failed:", e); return null; }
+}
+
+function isRelevantSeries(series){
+  if (!series) return false;
+  const s = series.toLowerCase();
+  return s.includes("sword & shield") || s.includes("scarlet & violet") || s.includes("mega evolution");
+}
+
+function rarityKeyForAPI(apiRarity){
+  return API_RARITY_TO_KEY[apiRarity] || apiRarity.replace(/[^A-Z]/gi, "").substring(0, 4).toUpperCase() || "OTHER";
+}
+
+// Build a SET_PULL_RATES entry on-the-fly for API-discovered sets
+async function ensureSetData(setKey){
+  if (SET_PULL_RATES[setKey]) return;  // already loaded
+  if (!setKey.startsWith("api:")) return;
+  const setId = setKey.substring(4);
+  const allSets = await fetchAllSets();
+  const setInfo = (allSets || []).find(s => s.id === setId);
+  if (!setInfo) return;
+
+  try {
+    const url = `https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(`set.id:${setId}`)}&select=rarity&pageSize=500`;
+    const res = await fetch(url);
+    if (!res.ok) return;
+    const data = await res.json();
+    const cards = data.data || [];
+    const rarityCount = {};
+    for (const c of cards){
+      const r = c.rarity || "Unknown";
+      rarityCount[r] = (rarityCount[r] || 0) + 1;
+    }
+
+    const rarities = {};
+    for (const [apiRarity, count] of Object.entries(rarityCount)){
+      if (apiRarity === "Common" || apiRarity === "Uncommon") continue;  // skip bulk
+      const key = rarityKeyForAPI(apiRarity);
+      const defaults = DEFAULT_RARITY_PULL_RATES[apiRarity] || { any: 50, specific: 500 };
+      rarities[key] = {
+        any: defaults.any,
+        specific: defaults.specific,
+        label: `${apiRarity} (${count})`,
+        apiRarity: apiRarity,   // keep the original API string so fetch can filter precisely
+      };
+    }
+    SET_PULL_RATES[setKey] = { name: setInfo.name, rarities, isDynamic: true, apiSetId: setId };
+    SET_API_NAMES[setKey] = setInfo.name;
+  } catch (e){ console.warn("ensureSetData failed:", e); }
+}
+
+async function fetchCardsFromAPI(setKey, rarityKey){
+  const set = SET_PULL_RATES[setKey];
+  // Prefer the API rarity string stored on the rarity entry (set by ensureSetData
+  // for auto-discovered sets). Fall back to the static map for hardcoded sets.
+  const apiRarity = set?.rarities?.[rarityKey]?.apiRarity || API_RARITY_MAP[rarityKey];
+
+  // For dynamic sets, query by set.id (more precise than name)
+  let q;
+  if (set?.apiSetId){
+    q = `set.id:${set.apiSetId}`;
+  } else {
+    const apiSetName = SET_API_NAMES[setKey];
+    if (!apiSetName) return null;
+    q = `set.name:"${apiSetName}"`;
+  }
+  if (apiRarity) q += ` rarity:"${apiRarity}"`;
+
+  // v2 cache key — now includes tcgplayer + cardmarket price data
+  const cacheKey = `tcgapi_v2_${setKey}_${rarityKey}`;
+  const cached = sessionStorage.getItem(cacheKey);
+  if (cached) return JSON.parse(cached);
+
+  // Include tcgplayer + cardmarket so we get prices for free
+  const url = `https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(q)}&select=name,number,rarity,images,tcgplayer,cardmarket&pageSize=250`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const cards = (data.data || []).map(c => ({
+      name: c.name,
+      number: c.number,
+      images: c.images || null,
+      tcgplayer: c.tcgplayer || null,
+      cardmarket: c.cardmarket || null,
+    }));
+    cards.sort((a, b) => {
+      const an = parseInt(a.number, 10), bn = parseInt(b.number, 10);
+      if (!isNaN(an) && !isNaN(bn)) return an - bn;
+      return (a.number || "").localeCompare(b.number || "");
+    });
+    sessionStorage.setItem(cacheKey, JSON.stringify(cards));
+    return cards;
+  } catch (e){
+    console.warn("Pokemon TCG API failed:", e);
+    return null;
+  }
+}
+
+const USER_CARDS_KEY = "pokemon_tcg_user_cards_v1";
+function getUserCards(){ return JSON.parse(localStorage.getItem(USER_CARDS_KEY) || "{}"); }
+function saveUserCards(o){ localStorage.setItem(USER_CARDS_KEY, JSON.stringify(o)); }
+// Normalize seeds (strings) to {name, number, descriptor} objects.
+// `descriptor` distinguishes same-name cards in the same rarity (e.g.
+// "Forest" Pikachu vs "Prismatic" Pikachu when both are SIR in one set).
+function normalizeSeeds(arr){
+  return (arr || []).map(c => typeof c === "string"
+    ? { name: c, number: null, descriptor: null }
+    : { name: c.name, number: c.number || null, descriptor: c.descriptor || null });
+}
+function getSeedsFor(setKey, rarityKey){
+  return normalizeSeeds(SEED_CARDS[setKey]?.[rarityKey]);
+}
+function getUserCardsFor(setKey, rarityKey){
+  return normalizeSeeds(getUserCards()[setKey]?.[rarityKey]);
+}
+function addUserCard(setKey, rarityKey, cardName, cardNumber, descriptor){
+  const map = getUserCards();
+  map[setKey] = map[setKey] || {};
+  map[setKey][rarityKey] = map[setKey][rarityKey] || [];
+  // Same name + same descriptor = duplicate. Same name + different descriptor = OK.
+  const exists = map[setKey][rarityKey].some(c => {
+    const n = (typeof c === "string" ? c : c.name);
+    const d = (typeof c === "string" ? null : c.descriptor || null);
+    return n === cardName && d === (descriptor || null);
+  });
+  if (!exists){
+    map[setKey][rarityKey].push({
+      name: cardName,
+      number: cardNumber || null,
+      descriptor: descriptor || null,
+    });
+    saveUserCards(map);
+  }
+}
+
+function cardOptionLabel(c){
+  const num  = c.number ? `#${c.number}  ` : "";
+  const desc = c.descriptor ? ` (${c.descriptor})` : "";
+  return `${num}${c.name}${desc}`;
+}
+
+async function populateCardDropdown(){
+  const setKey = document.getElementById("set_key").value;
+  const rarityKey = document.getElementById("rarity_key").value;
+  const section = document.getElementById("card_pick_section");
+  const sel = document.getElementById("card_pick");
+  const hint = document.getElementById("card_count_hint");
+
+  if (!setKey || !rarityKey){ section.style.display = "none"; return; }
+  section.style.display = "block";
+
+  hint.textContent = "loading…";
+  sel.innerHTML = '<option value="">— loading —</option>';
+
+  // Try API first for full official list
+  let cards = await fetchCardsFromAPI(setKey, rarityKey);
+  let source = "API";
+
+  // Merge in user-added customs (always)
+  const userExtras = getUserCardsFor(setKey, rarityKey);
+  if (cards && cards.length){
+    // Avoid dupes by name
+    const apiNames = new Set(cards.map(c => c.name));
+    cards = [...cards, ...userExtras.filter(c => !apiNames.has(c.name))];
+  } else {
+    // Fall back to seed + user
+    cards = [...getSeedsFor(setKey, rarityKey), ...userExtras];
+    source = cards.length ? "seed" : "empty";
+  }
+
+  // Keep full card objects in module scope so onCardPick can read prices
+  window.__currentCards = cards;
+
+  sel.innerHTML = '<option value="">— pick a card —</option>';
+  cards.forEach((c, i) => {
+    const opt = document.createElement("option");
+    opt.value = String(i);
+    opt.textContent = cardOptionLabel(c);
+    opt.dataset.name = c.name;
+    opt.dataset.number = c.number || "";
+    opt.dataset.descriptor = c.descriptor || "";
+    opt.dataset.idx = String(i);
+    sel.appendChild(opt);
+  });
+  const addOpt = document.createElement("option");
+  addOpt.value = "__add__";
+  addOpt.textContent = "+ Custom card…";
+  sel.appendChild(addOpt);
+
+  hint.textContent = cards.length
+    ? `(${cards.length} cards · ${source})`
+    : "(no cards · use Custom)";
+}
+
+async function onCardPick(){
+  const sel = document.getElementById("card_pick");
+  const val = sel.value;
+  if (!val) return;
+
+  const setKey = document.getElementById("set_key").value;
+  const rarityKey = document.getElementById("rarity_key").value;
+  const setName = SET_PULL_RATES[setKey].name;
+
+  if (val === "__add__"){
+    const name = prompt(`New ${rarityKey} card name in ${setName}:\n(e.g. "Mega Charizard ex")`);
+    if (!name) { sel.value = ""; return; }
+    const number = prompt("Card number? (e.g. 193 — leave blank if unknown)") || "";
+    const descriptor = prompt(
+      `Variant label? (only if another card in this rarity has the same name — e.g. "Forest", "Prismatic", "Full Art". Leave blank otherwise.)`
+    ) || "";
+    addUserCard(setKey, rarityKey, name.trim(), number.trim() || null, descriptor.trim() || null);
+    populateCardDropdown();
+    setNameFromPick(name.trim(), number.trim() || null, descriptor.trim() || null, rarityKey, setName);
+    return;
+  }
+
+  const opt = sel.options[sel.selectedIndex];
+  setNameFromPick(opt.dataset.name, opt.dataset.number || null, opt.dataset.descriptor || null, rarityKey, setName);
+
+  // Image preview — use card's image if present, fallback to API lookup by name
+  const idx = parseInt(opt.dataset.idx, 10);
+  const card = window.__currentCards?.[idx];
+  if (card?.images?.small){
+    showCardImage(card.images.small, card.name);
+  } else if (card){
+    showCardImage(null);
+    fetchCardImageByName(card.name, card.number).then(url => {
+      if (url) showCardImage(url, card.name);
+    });
+  } else {
+    showCardImage(null);
+  }
+
+  // No price auto-fill — user clicks 📊 MC for MyCollectrics data
+  // or types the price manually.
+  document.getElementById("fetch_status").innerHTML =
+    `<span style="color:var(--muted);">📌 Card selected. Click <strong>📊 MyCollectrics</strong> for MyCollectrics data, or enter price manually.</span>`;
+}
+
+function setNameFromPick(cardName, cardNumber, descriptor, rarityKey, setName){
+  // Set is shown elsewhere — keep card name clean.
+  // Descriptor goes before number so fetch query reads "Forest Pikachu ex #193 SIR"
+  const descPart = descriptor ? ` ${descriptor}` : "";
+  const numPart  = cardNumber ? ` #${cardNumber}` : "";
+  document.getElementById("name").value = `${cardName}${descPart}${numPart} ${rarityKey}`;
+}
+
+async function populateSetDropdown(){
+  const sel = document.getElementById("set_key");
+  sel.innerHTML = '<option value="">— select set —</option>';
+
+  // Hardcoded sets first (★ marker = verified TCGplayer pull rates)
+  const verified = document.createElement("optgroup");
+  verified.label = "★ Verified pull rates";
+  for (const [key, set] of Object.entries(SET_PULL_RATES)){
+    if (set.isDynamic) continue;
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = set.name;
+    verified.appendChild(opt);
+  }
+  if (verified.children.length > 0) sel.appendChild(verified);
+
+  // Auto-discover the rest from Pokemon TCG API (async)
+  const allSets = await fetchAllSets();
+  if (!allSets) return;
+  const relevant = allSets.filter(s => isRelevantSeries(s.series));
+  const hardcodedNames = new Set(Object.values(SET_PULL_RATES).filter(s => !s.isDynamic).map(v => v.name.toLowerCase()));
+
+  // Group by series for cleaner UX
+  const grouped = {};
+  for (const s of relevant){
+    if (hardcodedNames.has(s.name.toLowerCase())) continue;
+    const series = s.series || "Other";
+    (grouped[series] = grouped[series] || []).push(s);
+  }
+  const seriesOrder = ["Mega Evolution", "Scarlet & Violet", "Sword & Shield"];
+  for (const series of seriesOrder){
+    if (!grouped[series]) continue;
+    const group = document.createElement("optgroup");
+    group.label = series;
+    for (const s of grouped[series]){
+      const opt = document.createElement("option");
+      opt.value = `api:${s.id}`;
+      const dateStr = s.releaseDate ? s.releaseDate.slice(0, 7) : "";
+      opt.textContent = `${s.name}${dateStr ? `  ·  ${dateStr}` : ""}`;
+      group.appendChild(opt);
+    }
+    sel.appendChild(group);
+  }
+}
+
+async function onSetChange(){
+  const setKey = document.getElementById("set_key").value;
+  const raritySel = document.getElementById("rarity_key");
+  raritySel.innerHTML = '<option value="">— select rarity —</option>';
+  document.getElementById("rarity_info").textContent = "";
+  document.getElementById("card_pick_section").style.display = "none";
+  if (!setKey) return;
+
+  // For API-discovered sets, fetch + build rarity data on demand
+  if (setKey.startsWith("api:") && !SET_PULL_RATES[setKey]){
+    raritySel.innerHTML = '<option value="">— loading from API —</option>';
+    await ensureSetData(setKey);
+    raritySel.innerHTML = '<option value="">— select rarity —</option>';
+  }
+
+  const set = SET_PULL_RATES[setKey];
+  if (!set){
+    raritySel.innerHTML = '<option value="">— set data unavailable —</option>';
+    return;
+  }
+  const rarities = set.rarities;
+  const ordered = Object.entries(rarities).sort((a,b) => b[1].specific - a[1].specific);
+  for (const [rKey, r] of ordered){
+    const opt = document.createElement("option");
+    opt.value = rKey;
+    opt.textContent = r.label;
+    raritySel.appendChild(opt);
+  }
+  if (set.isDynamic){
+    document.getElementById("rarity_info").innerHTML =
+      `<span style="color:#5e677b;">⚠️ Auto-discovered set · pull rates are industry estimates, override if you have official data.</span>`;
+  }
+}
+
+function onRarityChange(){
+  const setKey = document.getElementById("set_key").value;
+  const rarityKey = document.getElementById("rarity_key").value;
+  const info = document.getElementById("rarity_info");
+  if (!setKey || !rarityKey) { info.textContent = ""; document.getElementById("card_pick_section").style.display = "none"; return; }
+  const r = SET_PULL_RATES[setKey].rarities[rarityKey];
+  document.getElementById("pull_rate").value = r.specific;
+  // count of cards in this rarity, derived from any/specific ratio
+  const count = Math.max(1, Math.round(r.specific / r.any));
+  info.innerHTML = `📊 Any ${rarityKey}: <strong>1:${r.any}</strong> · Specific: <strong>1:${r.specific}</strong> · ~<strong>${count}</strong> cards in this rarity`;
+  populateCardDropdown();
+}
+
+/* ===== Currency: prices treated as SGD. Convert at fetch time. ===== */
+const USD_TO_SGD = 1.28;
+const EUR_TO_SGD = 1.40;
+
+/* ===== GRADING — slabs vs raw =====
+   `mult` = multiplier applied to the RAW NM market price for that grade.
+   `grader` ties to GRADER_REGIONAL for market-specific discounts (ACE +
+   in Asia, but discounted in West, etc.).
+*/
+const GRADE_TABLE = {
+  raw_nm:   { mult: 1.00, grader: "raw",  label: "Raw NM",             short: "Raw NM" },
+  raw_lp:   { mult: 0.80, grader: "raw",  label: "Raw LP",             short: "Raw LP" },
+  raw_mp:   { mult: 0.55, grader: "raw",  label: "Raw MP",             short: "Raw MP" },
+  raw_hp:   { mult: 0.35, grader: "raw",  label: "Raw HP",             short: "Raw HP" },
+  // PSA
+  psa_7:    { mult: 0.85, grader: "psa",  label: "PSA 7",              short: "PSA 7" },
+  psa_8:    { mult: 1.10, grader: "psa",  label: "PSA 8",              short: "PSA 8" },
+  psa_9:    { mult: 1.55, grader: "psa",  label: "PSA 9",              short: "PSA 9" },
+  psa_10:   { mult: 3.00, grader: "psa",  label: "PSA 10 Gem Mint",    short: "PSA 10" },
+  // BGS
+  bgs_85:   { mult: 1.05, grader: "bgs",  label: "BGS 8.5",            short: "BGS 8.5" },
+  bgs_9:    { mult: 1.35, grader: "bgs",  label: "BGS 9",              short: "BGS 9" },
+  bgs_95:   { mult: 2.50, grader: "bgs",  label: "BGS 9.5 Gem Mint",   short: "BGS 9.5" },
+  bgs_10:   { mult: 4.50, grader: "bgs",  label: "BGS 10 Pristine",    short: "BGS 10" },
+  bgs_bl:   { mult: 9.00, grader: "bgs",  label: "BGS 10 Black Label", short: "BGS BL" },
+  // CGC
+  cgc_9:    { mult: 1.25, grader: "cgc",  label: "CGC 9",              short: "CGC 9" },
+  cgc_95:   { mult: 2.00, grader: "cgc",  label: "CGC 9.5",            short: "CGC 9.5" },
+  cgc_10m:  { mult: 2.80, grader: "cgc",  label: "CGC 10 Mint",        short: "CGC 10" },
+  cgc_10p:  { mult: 4.50, grader: "cgc",  label: "CGC 10 Pristine",    short: "CGC 10 P" },
+  cgc_10pp: { mult: 6.50, grader: "cgc",  label: "CGC 10 Perfect",     short: "CGC 10 PP" },
+  // ACE (Singapore-based)
+  ace_8:    { mult: 0.90, grader: "ace",  label: "ACE 8",              short: "ACE 8" },
+  ace_9:    { mult: 1.25, grader: "ace",  label: "ACE 9",              short: "ACE 9" },
+  ace_10:   { mult: 2.40, grader: "ace",  label: "ACE 10",             short: "ACE 10" },
+  // SGC (vintage focus, growing in modern)
+  sgc_9:    { mult: 1.40, grader: "sgc",  label: "SGC 9",              short: "SGC 9" },
+  sgc_95:   { mult: 2.30, grader: "sgc",  label: "SGC 9.5",            short: "SGC 9.5" },
+  sgc_10:   { mult: 2.90, grader: "sgc",  label: "SGC 10",             short: "SGC 10" },
+  // CCIC (China)
+  ccic_9:   { mult: 1.10, grader: "ccic", label: "CCIC 9",             short: "CCIC 9" },
+  ccic_10:  { mult: 2.10, grader: "ccic", label: "CCIC 10",            short: "CCIC 10" },
+};
+
+/* Grade × Pokemon tier interaction.
+   Reality: PSA 10 on a Charizard = full ×3 premium because chase buyers exist.
+   PSA 10 on a Tier 4 card = barely any premium because the buyer pool is empty
+   and grading itself costs money. Lower Pokemon tier suppresses grade multiplier.
+*/
+function getGradeTierAdjustment(gradeKey, pokemonTierValue){
+  if (!gradeKey || gradeKey.startsWith("raw_")) return 1.0;
+  if (pokemonTierValue == null) return 1.0;
+  if (pokemonTierValue >= 0.95) return 1.00;   // Tier 1 — full grade premium
+  if (pokemonTierValue >= 0.65) return 0.92;   // Tier 2 — slight suppression
+  if (pokemonTierValue >= 0.35) return 0.78;   // Tier 3 — meaningful suppression
+  return 0.55;                                  // Tier 4 — most of the grade value evaporates
+}
+
+/* Universal grader discount — applies regardless of buyer location.
+   PSA is the global gold standard; smaller graders trade at intrinsic
+   discounts because their slabs hold less value in any secondary market.
+*/
+const GRADER_DISCOUNT = {
+  raw:  1.00,
+  psa:  1.00,
+  bgs:  0.93,
+  cgc:  0.90,
+  sgc:  0.88,
+  ace:  0.75,
+  ccic: 0.62,
+};
+
+function getGradeMultiplier(gradeKey){
+  const g = GRADE_TABLE[gradeKey];
+  if (!g) return 1.0;
+  const disc = GRADER_DISCOUNT[g.grader] ?? 1.0;
+  return g.mult * disc;
+}
+
+/* Pokemon market reality (this is critical):
+   Cards almost never go down. Period. The only scenarios that produce
+   sustained price drops are:
+     (1) Hype correction — a card pumped 12%+ in 2 weeks reverts
+     (2) Active reprint announcement
+     (3) Brand-new release dumping as supply floods
+   In ALL other cases, the floor is essentially flat. This is why
+   blanket "high price = will drop" predictions are wrong.
+*/
+const MONTHLY_CAP_UP            = 0.040;   // +4% per month max
+const MONTHLY_CAP_DOWN_NORMAL   = -0.005;  // -0.5% per month max — the standard Pokemon floor
+const MONTHLY_CAP_DOWN_HYPED    = -0.030;  // -3% per month when a clear pump is being corrected
+
+function clampMonthly(rate, hypePump = false){
+  const floor = hypePump ? MONTHLY_CAP_DOWN_HYPED : MONTHLY_CAP_DOWN_NORMAL;
+  return Math.max(floor, Math.min(MONTHLY_CAP_UP, rate));
+}
+
+/* Detect hype pump from price history: card moved >+12% in last ~14 days
+   = clear pump → mean reversion likely, allow bigger downside. */
+function detectHypePump(card){
+  const h = card?.price_history;
+  if (!h || h.length < 2) return false;
+  const now = h[h.length - 1];
+  // Find a point ~14 days ago (or oldest if newer)
+  const cutoff = now.ts - 14 * 24 * 3600 * 1000;
+  let baseline = h[0];
+  for (const p of h){
+    if (p.ts <= cutoff) baseline = p;
+    else break;
+  }
+  if (!baseline.price || baseline.price <= 0) return false;
+  return (now.price / baseline.price - 1) > 0.12;
+}
+
+/* === SIMILARITY-BASED PREDICTION (k-nearest neighbors) ===
+   Instead of static class rates, find portfolio cards with similar pillar
+   fingerprints AND real price history, then use their actual measured growth
+   rates as the prediction for this card. Self-improving as portfolio grows.
+*/
+
+// Cosine similarity on the 5-pillar vector. Returns 0-1 (1 = identical).
+function pillarSimilarity(a, b){
+  if (!a || !b) return 0;
+  const keys = ["pokemon", "art", "supply", "demand"];
+  let dot = 0, magA = 0, magB = 0;
+  for (const k of keys){
+    const va = a[k] ?? 0;
+    const vb = b[k] ?? 0;
+    dot  += va * vb;
+    magA += va * va;
+    magB += vb * vb;
+  }
+  if (magA === 0 || magB === 0) return 0;
+  return dot / (Math.sqrt(magA) * Math.sqrt(magB));
+}
+
+// Compound monthly growth rate from a card's logged price history.
+// Returns null if not enough data (need ≥2 points spanning ≥3 days).
+function historicalMonthlyRate(card){
+  const h = card.price_history;
+  if (!h || h.length < 2) return null;
+  const first = h[0], last = h[h.length - 1];
+  if (!first.price || !last.price) return null;
+  const daysElapsed = (last.ts - first.ts) / (1000 * 60 * 60 * 24);
+  if (daysElapsed < 3) return null;
+  const months = daysElapsed / 30;
+  return Math.pow(last.price / first.price, 1 / months) - 1;
+}
+
+// Find similar cards from portfolio that have measurable price history.
+// Returns array of {card, similarity, rate} sorted by similarity desc.
+function findSimilarCards(targetPillars, excludeCard = null, k = 5){
+  const matches = portfolio
+    .filter(c => c !== excludeCard && c.pillar_scores)
+    .map(c => ({
+      card: c,
+      similarity: pillarSimilarity(targetPillars, c.pillar_scores),
+      rate: historicalMonthlyRate(c),
+    }))
+    .filter(m => m.rate !== null && m.similarity > 0.85);  // only "fairly similar"
+
+  matches.sort((a, b) => b.similarity - a.similarity);
+  return matches.slice(0, k);
+}
+
+// Weighted-average monthly rate from k-nearest neighbors.
+// Returns null if not enough similar cards with history.
+function predictMonthlyFromSimilar(targetPillars, excludeCard = null){
+  const similar = findSimilarCards(targetPillars, excludeCard);
+  if (similar.length < 2) return null;
+  let weight = 0, sum = 0;
+  for (const s of similar){
+    weight += s.similarity;
+    sum    += s.similarity * s.rate;
+  }
+  return {
+    rate: sum / weight,
+    n: similar.length,
+    avgSimilarity: similar.reduce((a, s) => a + s.similarity, 0) / similar.length,
+    matches: similar.map(s => ({ name: s.card.name, rate: s.rate, sim: s.similarity })),
+  };
+}
+
+/* Gem rate (% of raw cards graded PSA 10) — modifies top-grade premiums.
+   Brutal gem rate (rare PSA 10s) = bigger premium on graded copies.
+   Loose gem rate (common PSA 10s) = smaller premium.
+   Only affects grades with base multiplier >= 1.8 (PSA 10, BGS 9.5+, CGC 9.5+).
+*/
+function getGemRateMultiplier(gemRatePct, gradeKey){
+  if (!gemRatePct || gemRatePct <= 0) return 1.0;
+  if (!gradeKey || gradeKey.startsWith("raw_")) return 1.0;
+  const g = GRADE_TABLE[gradeKey];
+  if (!g || g.mult < 1.8) return 1.0;
+  return Math.max(0.80, Math.min(1.50, 1 + (15 - gemRatePct) * 0.025));
+}
+
+function describeGemRate(pct){
+  if (pct < 5)  return { tier: "Brutal", color: "var(--green)" };
+  if (pct < 15) return { tier: "Tight",  color: "var(--accent)" };
+  if (pct < 30) return { tier: "Normal", color: "var(--muted)" };
+  return         { tier: "Loose",  color: "var(--red)" };
+}
+
+/* Pop report scarcity in that specific grade — smaller pop = harder to find */
+function getPopMultiplier(popCount){
+  if (!popCount || popCount <= 0) return 1.0;
+  if (popCount < 50)    return 1.35;   // trophy tier
+  if (popCount < 200)   return 1.18;
+  if (popCount < 1000)  return 1.05;
+  if (popCount < 5000)  return 1.00;
+  if (popCount < 20000) return 0.92;
+  return 0.85;                          // ultra-saturated pop
+}
+
+/* === Raw-supply dampening for high-PSA-pop cards ===
+   User insight: cards everyone grades have low *ungraded* supply on eBay,
+   but the total pool (graded + ungraded) is way bigger. The visible scarcity
+   is partially illusion. Dampen raw predicted price for cards with high PSA pop.
+*/
+function getRawSupplyDampening(gradeKey, popCount){
+  if (!gradeKey || !gradeKey.startsWith("raw_")) return 1.0;
+  if (!popCount || popCount <= 0) return 1.0;
+  // Use the PSA 10 pop as a proxy for "how often this card gets graded"
+  if (popCount < 100)   return 1.00;
+  if (popCount < 500)   return 0.97;
+  if (popCount < 2000)  return 0.92;
+  if (popCount < 10000) return 0.85;
+  return 0.78;
+}
+
+/* ===== Local Node.js proxy (server.js) =====
+   When the user runs `node server.js`, this proxy serves real eBay sold
+   prices for cards the Pokemon TCG API doesn't cover. We auto-detect
+   it on page load and fall back to API-only if it's not running.
+*/
+const PROXY_URL = "http://localhost:3001";
+
+async function checkProxy(){
+  try {
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(), 1500);
+    const res = await fetch(`${PROXY_URL}/health`, { signal: ctrl.signal });
+    if (res.ok){
+      const data = await res.json();
+      window.__proxyAvailable = !!data.ok;
+    }
+  } catch (e){ window.__proxyAvailable = false; }
+  renderProxyStatus();
+}
+
+function renderProxyStatus(){
+  const el = document.getElementById("proxy-status");
+  if (!el) return;
+  if (window.__proxyAvailable){
+    el.innerHTML = `🟢 Local proxy <strong>ON</strong> · eBay sold available`;
+    el.style.color = "var(--green)";
+  } else {
+    el.innerHTML = `🔴 Proxy OFF · run <code style="background:var(--panel2);padding:1px 4px;border-radius:3px;">node server.js</code> in this folder to enable eBay sold prices`;
+    el.style.color = "var(--muted)";
+  }
+}
+
+/* Get card image URL by searching Pokemon TCG API by name (+number if known).
+   Lets us show the picture even when user typed the name manually. */
+async function fetchCardImageByName(name, number){
+  try {
+    let q = `name:"${name}"`;
+    if (number) q += ` number:"${number}"`;
+    const url = `https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(q)}&select=images&pageSize=1`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.data?.[0]?.images?.small || null;
+  } catch (e){ return null; }
+}
+
+function renderMcChart(history){
+  const container = document.getElementById("mc_chart_preview");
+  if (!container) return;
+  if (!history || history.length < 2){
+    container.style.display = "none";
+    container.innerHTML = "";
+    return;
+  }
+  const prices = history.map(h => h.price);
+  const min = Math.min(...prices), max = Math.max(...prices);
+  const range = max - min || 1;
+  const W = 280, H = 90, padY = 8;
+  const points = prices.map((p, i) => {
+    const x = (i / (prices.length - 1)) * W;
+    const y = H - padY - ((p - min) / range) * (H - padY * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+  const delta = prices[prices.length - 1] - prices[0];
+  const deltaPct = prices[0] ? (delta / prices[0] * 100) : 0;
+  const color = delta >= 0 ? "var(--green)" : "var(--red)";
+  const sign = delta >= 0 ? "+" : "";
+  const first = history[0]?.ts ? new Date(history[0].ts) : null;
+  const last  = history[history.length - 1]?.ts ? new Date(history[history.length - 1].ts) : null;
+  const dateRange = (first && last && !isNaN(first) && !isNaN(last))
+    ? `${first.toISOString().slice(0,10)} → ${last.toISOString().slice(0,10)}`
+    : `${history.length} points`;
+
+  container.innerHTML = `
+    <div class="mc-chart-wrap" style="background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:8px;position:relative;">
+      <div class="mc-tooltip" style="position:absolute;display:none;background:#fff;color:#111;padding:4px 8px;border-radius:4px;font-size:11px;pointer-events:none;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,0.35);white-space:nowrap;"></div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:4px;display:flex;justify-content:space-between;">
+        <span>📈 MyCollectrics price history</span>
+        <span style="color:${color};">${sign}${deltaPct.toFixed(1)}% (${dateRange})</span>
+      </div>
+      <svg class="mc-svg" width="100%" height="${H}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="display:block;cursor:crosshair;">
+        <line class="mc-cursor" x1="0" y1="0" x2="0" y2="${H}" stroke="${color}" stroke-width="0.6" stroke-dasharray="2,2" style="display:none;" />
+        <polyline points="${points}" stroke="${color}" stroke-width="1.8" fill="none" />
+        <circle class="mc-dot" r="3" fill="${color}" stroke="#fff" stroke-width="1" style="display:none;" />
+        <rect class="mc-hit" x="0" y="0" width="${W}" height="${H}" fill="transparent" />
+      </svg>
+      <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-top:2px;">
+        <span>floor S$${min.toFixed(0)}</span>
+        <span>ceiling S$${max.toFixed(0)}</span>
+      </div>
+    </div>`;
+  container.style.display = "block";
+
+  // Wire hover — move tooltip, cursor line, and dot to nearest data point
+  const wrap = container.querySelector(".mc-chart-wrap");
+  const svg = container.querySelector(".mc-svg");
+  const tooltip = container.querySelector(".mc-tooltip");
+  const cursor = container.querySelector(".mc-cursor");
+  const dot = container.querySelector(".mc-dot");
+
+  svg.addEventListener("mousemove", (e) => {
+    const rect = svg.getBoundingClientRect();
+    const relX = (e.clientX - rect.left) / rect.width;
+    if (relX < 0 || relX > 1){
+      tooltip.style.display = "none"; cursor.style.display = "none"; dot.style.display = "none";
+      return;
+    }
+    const idx = Math.max(0, Math.min(history.length - 1, Math.round(relX * (history.length - 1))));
+    const pt = history[idx];
+    const dateStr = pt.ts ? new Date(pt.ts).toISOString().slice(0, 10) : `point ${idx+1}`;
+
+    tooltip.innerHTML = `<strong>S$${pt.price.toFixed(2)}</strong><br><span style="font-size:9px;opacity:0.65;">${dateStr}</span>`;
+
+    // Position tooltip relative to chart wrap (constrained to its bounds)
+    const wrapRect = wrap.getBoundingClientRect();
+    const localX = e.clientX - wrapRect.left;
+    const localY = e.clientY - wrapRect.top;
+    let tx = localX + 12, ty = localY - 36;
+    if (tx + 110 > wrapRect.width) tx = localX - 110;
+    if (ty < 0) ty = localY + 12;
+    tooltip.style.left = tx + "px";
+    tooltip.style.top  = ty + "px";
+    tooltip.style.display = "block";
+
+    // Position cursor line + dot at exact data point in viewBox coords
+    const xVB = (idx / (history.length - 1)) * W;
+    const yVB = H - padY - ((pt.price - min) / range) * (H - padY * 2);
+    cursor.setAttribute("x1", xVB);
+    cursor.setAttribute("x2", xVB);
+    cursor.style.display = "block";
+    dot.setAttribute("cx", xVB);
+    dot.setAttribute("cy", yVB);
+    dot.style.display = "block";
+  });
+
+  svg.addEventListener("mouseleave", () => {
+    tooltip.style.display = "none";
+    cursor.style.display = "none";
+    dot.style.display = "none";
+  });
+}
+
+function showCardImage(imageUrl, name){
+  const imgPreview = document.getElementById("card_image_preview");
+  if (!imgPreview) return;
+  if (imageUrl){
+    window.__lastCardImage = imageUrl;
+    imgPreview.innerHTML = `<img src="${escape(imageUrl)}" alt="${escape(name || "")}" style="max-width:180px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.3);" />`;
+    imgPreview.style.display = "block";
+  } else {
+    imgPreview.innerHTML = "";
+    imgPreview.style.display = "none";
+  }
+}
+
+async function fetchFromMycollectrics(query){
+  if (!window.__proxyAvailable) return null;
+  try {
+    // Step 1: Search by card name → get card ID
+    const searchRes = await fetch(`${PROXY_URL}/mycollectrics/search?q=${encodeURIComponent(query)}`);
+    if (!searchRes.ok) return null;
+    const searchData = await searchRes.json();
+    if (!searchData.results || searchData.results.length === 0) return null;
+
+    // Step 2: Fetch the first matching card's full data
+    const firstId = searchData.results[0].id;
+    const dataRes = await fetch(`${PROXY_URL}/mycollectrics?id=${encodeURIComponent(firstId)}`);
+    if (!dataRes.ok) return null;
+    const data = await dataRes.json();
+    return {
+      id: firstId,
+      matchTitle: searchData.results[0].text,
+      parsed: data.parsed || {},
+      charts: data.charts || null,
+      alternativeMatches: searchData.results.slice(1, 5),
+    };
+  } catch (e){ console.warn("Mycollectrics fetch failed:", e); return null; }
+}
+
+async function applyMycollectricsData(){
+  const status = document.getElementById("fetch_status");
+  const fullName = document.getElementById("name").value.trim();
+  const query = fullName.split(/\s+—\s+/)[0]
+    .replace(/\s*#\S+\s*/g, " ")
+    .replace(/\s+(SIR|HR|UR|MHR|DR|IR|MAR|AS|MB|PB|FE|BWR)$/i, "")
+    .trim();
+  if (!query){
+    status.innerHTML = '<span style="color:var(--red);">Enter a card name first.</span>';
+    return;
+  }
+  if (!window.__proxyAvailable){
+    status.innerHTML = '<span style="color:var(--red);">Proxy off. Run <code>node server.js</code>.</span>';
+    return;
+  }
+
+  status.innerHTML = `⏳ Searching MyCollectrics for "${escape(query)}"… (10–20s)`;
+  const result = await fetchFromMycollectrics(query);
+  if (!result || !result.parsed){
+    status.innerHTML = `<span style="color:var(--orange);">❌ No MyCollectrics match for "${escape(query)}". Try a more specific name.</span>`;
+    return;
+  }
+
+  const p = result.parsed;
+  const updates = [];
+
+  // Auto-fill current price (raw or graded depending on selected grade)
+  const gradeKey = document.getElementById("grade_key").value;
+  let priceUSD = null, priceLabel = "", priceForGrade = null;
+  if (gradeKey === "psa_10" && p.psa10_price_usd){
+    priceUSD = p.psa10_price_usd; priceLabel = "PSA 10"; priceForGrade = "psa_10";
+  } else if (gradeKey === "psa_9" && p.psa9_price_usd){
+    priceUSD = p.psa9_price_usd; priceLabel = "PSA 9"; priceForGrade = "psa_9";
+  } else if (p.raw_price_usd){
+    priceUSD = p.raw_price_usd; priceLabel = "raw NM blended"; priceForGrade = "raw_nm";
+  }
+  if (priceUSD){
+    const sgd = priceUSD * USD_TO_SGD;
+    document.getElementById("current_price").value = sgd.toFixed(2);
+    window.__lastPriceSource = `MyCollectrics ${priceLabel}`;
+    window.__lastPriceForGrade = priceForGrade;  // flag — price is AT this grade
+    updates.push(`💰 ${priceLabel} S$${sgd.toFixed(2)}`);
+  }
+
+  // Supply & demand — these need different sources for ungraded vs graded.
+  // MC's eBay-listing-based metrics are about UNGRADED. For PSA 10 etc.,
+  // we derive supply from PSA pop count and demand from grade-specific
+  // price trend.
+  const isGraded = gradeKey && !gradeKey.startsWith("raw_");
+
+  if (isGraded){
+    // Graded supply: lower PSA pop → tighter supply (lower saturation = better for price)
+    if (p.psa10_pop != null){
+      let supplySat;
+      const pop = p.psa10_pop;
+      if (pop < 50)         supplySat = 0.1;
+      else if (pop < 200)   supplySat = 0.3;
+      else if (pop < 500)   supplySat = 0.6;
+      else if (pop < 2000)  supplySat = 1.0;
+      else if (pop < 10000) supplySat = 1.5;
+      else                  supplySat = 1.9;
+      document.getElementById("supply").value = supplySat;
+      if (typeof updateSupply === "function") updateSupply(supplySat);
+      updates.push(`📦 graded supply ${supplySat.toFixed(2)} (PSA 10 pop ${pop})`);
+    }
+    // Graded demand: derive from 7d-vs-30d price trend
+    const trend = p.change_7d_pct;
+    if (trend != null){
+      let demandPct;
+      if (trend >= 15)      demandPct = 14;
+      else if (trend >= 7)  demandPct = 11;
+      else if (trend >= 0)  demandPct = 7;
+      else if (trend >= -7) demandPct = 4;
+      else                  demandPct = 1.5;
+      document.getElementById("demand").value = demandPct;
+      if (typeof updateDemand === "function") updateDemand(demandPct);
+      updates.push(`📊 graded demand ${demandPct.toFixed(1)}% (7d trend ${trend > 0 ? "+" : ""}${trend.toFixed(1)}%)`);
+    }
+  } else {
+    // Ungraded: MC's metrics are exactly right
+    if (p.demand_pressure_pct != null){
+      const clamped = Math.min(15, Math.max(0, p.demand_pressure_pct));
+      document.getElementById("demand").value = clamped;
+      if (typeof updateDemand === "function") updateDemand(clamped);
+      updates.push(`📊 demand ${p.demand_pressure_pct.toFixed(1)}%`);
+    }
+    if (p.supply_saturation != null){
+      const clamped = Math.min(2, Math.max(0, p.supply_saturation));
+      document.getElementById("supply").value = clamped;
+      if (typeof updateSupply === "function") updateSupply(clamped);
+      updates.push(`📦 supply ${p.supply_saturation.toFixed(2)}`);
+    }
+  }
+
+  // Gem rate
+  if (p.gem_rate_pct != null){
+    document.getElementById("gem_rate").value = p.gem_rate_pct;
+    updates.push(`💎 gem ${p.gem_rate_pct.toFixed(1)}%`);
+  }
+
+  // Pop report (PSA 10 pop)
+  if (p.psa10_pop != null){
+    document.getElementById("pop_report").value = p.psa10_pop;
+    updates.push(`👑 PSA 10 pop ${p.psa10_pop}`);
+  }
+
+  // Save additional MC data for raw-supply dampening + display
+  window.__lastMycollectrics = p;
+
+  // Convert chart datasets into a price_history array (timestamp, price)
+  // that will get attached to the portfolio card when "Add to portfolio" runs.
+  // Prefers the ungraded/blended/eBay-sold dataset.
+  if (result.charts && Array.isArray(result.charts)){
+    let series = null, labels = null;
+    for (const c of result.charts){
+      if (!c.datasets || !c.datasets.length) continue;
+      const blended = c.datasets.find(d => /ungraded|blended|near.mint|raw/i.test(d.label || "")) || c.datasets[0];
+      if (blended?.data?.length){
+        series = blended.data;
+        labels = c.labels || null;
+        break;
+      }
+    }
+    if (series){
+      const points = [];
+      const now = Date.now();
+      series.forEach((val, i) => {
+        const price = typeof val === "object" ? (val.y ?? val.value) : val;
+        if (price == null || !isFinite(price)) return;
+        let ts;
+        if (labels && labels[i]){
+          const parsed = new Date(labels[i]);
+          if (!isNaN(parsed.getTime())) ts = parsed.getTime();
+        }
+        if (!ts){
+          // No timestamp → assume evenly-spaced over the last ~60 days
+          ts = now - ((series.length - 1 - i) * 24 * 3600 * 1000);
+        }
+        // Convert USD → SGD since MC reports USD
+        points.push({ ts, price: price * USD_TO_SGD });
+      });
+      window.__lastMcHistory = points.length >= 2 ? points : null;
+      if (window.__lastMcHistory){
+        updates.push(`📈 ${points.length} history points`);
+        renderMcChart(window.__lastMcHistory);
+      } else {
+        renderMcChart(null);
+      }
+    } else {
+      renderMcChart(null);
+    }
+  } else {
+    renderMcChart(null);
+  }
+
+  if (typeof onGradeChange === "function") onGradeChange();
+
+  // Auto-fetch image — use the card's name parsed from MC, fallback to user-typed
+  const imgName = p.card_name || query;
+  const imgNumber = p.card_number || null;
+  const imageUrl = await fetchCardImageByName(imgName, imgNumber);
+  if (imageUrl) showCardImage(imageUrl, imgName);
+
+  status.innerHTML = `✅ <strong>MyCollectrics:</strong> ${updates.join(" · ")} <span style="color:#5e677b">(${escape(result.matchTitle)})</span>`;
+  predict();
+}
+
+async function fetchEbayViaProxy(query){
+  if (!window.__proxyAvailable) return null;
+  // Cascade: Puppeteer (real Chrome, beats Akamai) → Browse API (if creds) → raw scrape
+  for (const endpoint of ["/ebay/puppeteer", "/ebay/browse", "/ebay/sold"]){
+    try {
+      const ctrl = new AbortController();
+      setTimeout(() => ctrl.abort(), 30000);  // Puppeteer needs more time
+      const res = await fetch(`${PROXY_URL}${endpoint}?q=${encodeURIComponent(query)}`, { signal: ctrl.signal });
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data.prices && data.prices.length >= 3){
+        return {
+          price: data.trimmedMean || data.median,
+          count: data.prices.length,
+          min: data.min,
+          max: data.max,
+          source: data.source,
+        };
+      }
+    } catch (e){ console.warn(`Proxy ${endpoint} fetch failed:`, e); }
+  }
+  return null;
+}
+
+/* Language and regional premiums removed — model treats all cards/markets
+   uniformly. Functions kept as no-ops so existing call sites keep compiling. */
+function getLanguageMult(){ return 1.0; }
+function getAsiaPremium(){ return 1.0; }
+
+/* ===== Pokemon tier dictionaries — used by auto-rate ===== */
+const TIER_1_POKEMON = new Set([
+  "pikachu","charizard","gengar","mewtwo","mew","umbreon",
+]);
+const TIER_2_POKEMON = new Set([
+  // Mega forms of top Pokemon
+  "mega charizard","mega gengar","mega rayquaza","mega gardevoir",
+  "mega blastoise","mega venusaur","mega mewtwo","mega pikachu",
+  // Strong popularity / classic chase Pokemon
+  "dragonite","greninja","rayquaza","gardevoir","gyarados","garchomp",
+  "lugia","ho-oh","tyranitar","blastoise","venusaur","sylveon",
+  "espeon","leafeon","glaceon","vaporeon","jolteon","flareon",
+  "mimikyu","eevee",
+]);
+const TIER_3_POKEMON = new Set([
+  // Recognizable but a step down from the chase tier
+  "lucario","metagross","blaziken","sceptile","swampert",
+  "infernape","empoleon","torterra","absol","darkrai","arceus",
+  "zoroark","reshiram","zekrom","kyurem","xerneas","yveltal",
+  "zygarde","solgaleo","lunala","necrozma","incineroar","decidueye",
+  "primarina","celebi","jirachi","aerodactyl","scizor","ampharos",
+]);
+
+// Infer tier from card name. Returns the tier multiplier (1.0/0.7/0.4/0.1).
+function inferPokemonTier(cardName){
+  if (!cardName) return null;
+  const lower = cardName.toLowerCase();
+  for (const p of TIER_1_POKEMON) if (lower.includes(p)) return { tier: 1, value: 1.0 };
+  for (const p of TIER_2_POKEMON) if (lower.includes(p)) return { tier: 2, value: 0.7 };
+  for (const p of TIER_3_POKEMON) if (lower.includes(p)) return { tier: 3, value: 0.4 };
+  return { tier: 4, value: 0.1 };
+}
+
+/* Confidence score — how much should you trust this prediction?
+   Higher = more data points behind it. Returns 0-100.
+*/
+function predictionConfidence(scores, similar, priceStatsObj, hasMcData, hasPrice){
+  let pts = 0;
+  // Price history points (most important — actual market data)
+  if (priceStatsObj && priceStatsObj.n >= 8) pts += 35;
+  else if (priceStatsObj && priceStatsObj.n >= 3) pts += 20;
+  else if (priceStatsObj && priceStatsObj.n >= 1) pts += 8;
+  // kNN data from similar cards
+  if (similar && similar.n >= 3) pts += 25;
+  else if (similar && similar.n >= 1) pts += 12;
+  // MyCollectrics signals (graded prices, demand, supply pulled from real data)
+  if (hasMcData) pts += 15;
+  // Pillar non-neutrality — informed scores beat defaults
+  if (scores.pokemon >= 0.7) pts += 5;
+  if (scores.art >= 0.6) pts += 5;
+  if (Math.abs(scores.supply - 0.5) > 0.2) pts += 5;
+  if (Math.abs(scores.demand - 0.5) > 0.2) pts += 5;
+  // Has an actual current price
+  if (hasPrice) pts += 5;
+  return Math.min(100, pts);
+}
+
+function confidenceLabel(score){
+  if (score >= 75) return { text: "HIGH", color: "var(--green)" };
+  if (score >= 50) return { text: "MEDIUM", color: "var(--accent)" };
+  if (score >= 30) return { text: "LOW", color: "var(--orange)" };
+  return { text: "VERY LOW", color: "var(--red)" };
+}
+
+function toggleTutorial(){
+  const panel = document.getElementById("tutorial_panel");
+  const btn = document.getElementById("tutorial_toggle");
+  if (!panel || !btn) return;
+  if (panel.style.display === "none" || !panel.style.display){
+    panel.style.display = "block";
+    btn.textContent = "📖 Hide tutorial";
+    panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  } else {
+    panel.style.display = "none";
+    btn.textContent = "📖 How to use this — full tutorial";
+  }
+}
+
+function autoRatePokemonTier(){
+  const name = document.getElementById("name").value.trim();
+  if (!name){
+    alert("Type a card name first.");
+    return;
+  }
+  const result = inferPokemonTier(name);
+  if (!result){
+    alert("Couldn't infer tier — type the Pokemon name in the card name field.");
+    return;
+  }
+  document.getElementById("pokemon_tier").value = String(result.value);
+  document.getElementById("fetch_status").innerHTML =
+    `🎯 Auto-rated as <strong>Tier ${result.tier}</strong> based on "${escape(name)}". Adjust if needed.`;
+}
+
+/* ===== CATALYSTS — event-driven multipliers ===== */
+const CATALYSTS = {
+  pokemon_presents:  { label: "Pokemon Presents announcement",   mult: 1.08, bearish: false },
+  anime_feature:     { label: "Anime arc / promo feature",       mult: 1.12, bearish: false },
+  influencer_pull:   { label: "Big influencer pull (Logan-tier)", mult: 1.15, bearish: false },
+  anniversary:       { label: "Anniversary year",                mult: 1.10, bearish: false },
+  tournament_meta:   { label: "Tournament-meta defining",        mult: 1.06, bearish: false },
+  set_release_hype:  { label: "Brand-new set hype (<60d)",       mult: 1.12, bearish: false },
+  reprint_announced: { label: "Reprint announced",               mult: 0.70, bearish: true  },
+  reprint_risk_high: { label: "High reprint-risk Pokemon",       mult: 0.88, bearish: true  },
+  rotating_soon:     { label: "Rotating from Standard <3mo",     mult: 0.82, bearish: true  },
+  pop_explosion:     { label: "Pop explosion (PSA pop growing fast)", mult: 0.85, bearish: true },
+};
+function getCatalystMult(activeCatalysts){
+  let m = 1.0;
+  for (const c of (activeCatalysts || [])){
+    if (CATALYSTS[c]) m *= CATALYSTS[c].mult;
+  }
+  return m;
+}
+
+/* === Beefed-up price extraction ===
+   Tries EVERY variant (holo/normal/reverse/etc.) and EVERY price field
+   (market/mid/directLow/low/high) so we catch prices on cards where the
+   API has partial data. Returns detail so we can show the source.
+*/
+function extractTCGPlayerDetailed(card){
+  const p = card?.tcgplayer?.prices;
+  if (!p) return null;
+  const preferred = ["holofoil","1stEditionHolofoil","reverseHolofoil",
+                     "normal","1stEdition","unlimited","unlimitedHolofoil"];
+  const allVariants = [...preferred, ...Object.keys(p).filter(k => !preferred.includes(k))];
+  const fields = ["market","mid","directLow","low","high"];
+  for (const v of allVariants){
+    if (!p[v]) continue;
+    for (const f of fields){
+      const val = p[v][f];
+      if (val && val > 0) return { price: val, variant: v, field: f };
+    }
+  }
+  return null;
+}
+
+function extractCardmarketDetailed(card){
+  const p = card?.cardmarket?.prices;
+  if (!p) return null;
+  const fields = ["trendPrice","averageSellPrice","avg30","avg7","avg1",
+                  "lowPriceExPlus","lowPrice","germanProLow","reverseHoloTrend"];
+  for (const f of fields){
+    const val = p[f];
+    if (val && val > 0) return { price: val, field: f };
+  }
+  return null;
+}
+
+/* Unified — gives SGD price + a "source" string for display */
+function getBestPrice(card){
+  const tcg = extractTCGPlayerDetailed(card);
+  if (tcg) return {
+    priceSGD: tcg.price * USD_TO_SGD,
+    raw: tcg.price,
+    currency: "USD",
+    source: `TCG ${tcg.variant}/${tcg.field}`,
+  };
+  const cm = extractCardmarketDetailed(card);
+  if (cm) return {
+    priceSGD: cm.price * EUR_TO_SGD,
+    raw: cm.price,
+    currency: "EUR",
+    source: `Cardmarket ${cm.field}`,
+  };
+  return null;
+}
+
+/* Back-compat wrappers — old code calls these */
+function extractTCGPlayerPriceUSD(card){ return extractTCGPlayerDetailed(card)?.price ?? null; }
+function extractCardmarketPriceEUR(card){ return extractCardmarketDetailed(card)?.price ?? null; }
+
+/* ===== Pokemon TCG API mapping ===== */
+const API_RARITY_MAP = {
+  SIR: "Special Illustration Rare",
+  IR:  "Illustration Rare",
+  HR:  "Hyper Rare",
+  UR:  "Ultra Rare",
+  DR:  "Double Rare",
+  AS:  "ACE SPEC Rare",
+  MHR: "Hyper Rare",
+  MAR: "Special Illustration Rare",
+  BWR: "Black White Rare",
+  FE:  "Special Energy",
+  MB:  "Master Ball",
+  PB:  "Poke Ball",
+  // Dynamic rarities for auto-discovered sets
+  V:     "Rare Holo V",
+  VMAX:  "Rare Holo VMAX",
+  VSTAR: "Rare Holo VSTAR",
+  ex:    "Rare Holo ex",
+  RH:    "Rare Holo",
+  RR:    "Rare Rainbow",
+  RS:    "Rare Secret",
+  RU:    "Rare Ultra",
+  TG:    "Trainer Gallery Rare Holo",
+  RAD:   "Radiant Rare",
+  SR:    "Shiny Rare",
+  SUR:   "Shiny Ultra Rare",
+  AR:    "Amazing Rare",
+  PROMO: "Promo",
+  R:     "Rare",
+};
+
+// Inverse map for parsing API rarities back to our codes
+const API_RARITY_TO_KEY = {
+  "Special Illustration Rare": "SIR",
+  "Illustration Rare": "IR",
+  "Hyper Rare": "HR",
+  "Ultra Rare": "UR",
+  "Double Rare": "DR",
+  "ACE SPEC Rare": "AS",
+  "Rare Holo V": "V",
+  "Rare Holo VMAX": "VMAX",
+  "Rare Holo VSTAR": "VSTAR",
+  "Rare Holo ex": "ex",
+  "Rare Holo": "RH",
+  "Rare Rainbow": "RR",
+  "Rare Secret": "RS",
+  "Rare Ultra": "RU",
+  "Trainer Gallery Rare Holo": "TG",
+  "Radiant Rare": "RAD",
+  "Shiny Rare": "SR",
+  "Shiny Ultra Rare": "SUR",
+  "Amazing Rare": "AR",
+  "Promo": "PROMO",
+  "Rare": "R",
+};
+
+// Default pull rates per rarity (any, specific) — used for auto-discovered
+// sets where we don't have the official TCGplayer pull rate chart yet.
+// These are industry estimates; user can override the auto-filled pull rate.
+const DEFAULT_RARITY_PULL_RATES = {
+  "Common":                    { any: 1, specific: 8 },
+  "Uncommon":                  { any: 1, specific: 12 },
+  "Rare":                      { any: 3, specific: 30 },
+  "Rare Holo":                 { any: 5, specific: 50 },
+  "Double Rare":               { any: 5, specific: 80 },
+  "Rare Holo V":               { any: 4, specific: 30 },
+  "Rare Holo VMAX":            { any: 7, specific: 80 },
+  "Rare Holo VSTAR":           { any: 8, specific: 100 },
+  "Rare Holo ex":              { any: 5, specific: 80 },
+  "Rare Ultra":                { any: 12, specific: 100 },
+  "Ultra Rare":                { any: 15, specific: 250 },
+  "Illustration Rare":         { any: 12, specific: 280 },
+  "Special Illustration Rare": { any: 85, specific: 1100 },
+  "Hyper Rare":                { any: 150, specific: 800 },
+  "Rare Rainbow":              { any: 80, specific: 600 },
+  "Rare Secret":               { any: 80, specific: 600 },
+  "ACE SPEC Rare":             { any: 20, specific: 130 },
+  "Trainer Gallery Rare Holo": { any: 30, specific: 200 },
+  "Radiant Rare":              { any: 80, specific: 400 },
+  "Shiny Rare":                { any: 50, specific: 350 },
+  "Shiny Ultra Rare":          { any: 80, specific: 500 },
+  "Amazing Rare":              { any: 50, specific: 400 },
+  "Promo":                     { any: 1, specific: 1 },
+};
+
+// 4-pillar model — pull rate removed; supply pillar fully absorbs it.
+// Art is intentionally 20% larger than Pokemon (chase prices are art-driven,
+// not just Pokemon identity). Gaps between pillars are moderate, not extreme.
+const DEFAULT_WEIGHTS = {
+  art:     0.24,   // largest identity pillar — art drives chase prices
+  pokemon: 0.20,   // 20% smaller than art (0.24 / 1.20 = 0.20)
+  supply:  0.30,   // largest supply-side pillar
+  demand:  0.26,   // close to supply, slightly lower
+};
+const DEFAULT_PROMO_WEIGHTS = {
+  art:     0.30,   // 20% larger than Pokemon (0.30 / 1.20 = 0.25)
+  pokemon: 0.25,
+  supply:  0.25,
+  demand:  0.20,
+};
+const WEIGHTS_KEY = "pokemon_tcg_weights_v1";
+const PROMO_WEIGHTS_KEY = "pokemon_tcg_promo_weights_v1";
+let WEIGHTS = JSON.parse(localStorage.getItem(WEIGHTS_KEY) || "null") || {...DEFAULT_WEIGHTS};
+let PROMO_WEIGHTS = JSON.parse(localStorage.getItem(PROMO_WEIGHTS_KEY) || "null") || {...DEFAULT_PROMO_WEIGHTS};
+const SLOPE = 1.5;  // composite → multiplier slope; comp=0.5 ↔ 1.0×, comp=1.0 ↔ 1.75×
+function saveWeights(){
+  localStorage.setItem(WEIGHTS_KEY, JSON.stringify(WEIGHTS));
+  localStorage.setItem(PROMO_WEIGHTS_KEY, JSON.stringify(PROMO_WEIGHTS));
+}
+
+function p_pull_rate(x){
+  if (x >= 2000) return 1.0;
+  if (x >= 1000) return 0.8;
+  if (x >= 500)  return 0.5;
+  if (x >= 250)  return 0.35;
+  return 0.2;
+}
+
+// Demand pressure (%) → 0..1, anchored at 15% = max
+function p_demand_pressure(pct){
+  if (pct >= 15) return 1.0;
+  if (pct >= 10) return 0.75 + (pct - 10) * 0.05;   // 10→0.75, 15→1.0
+  if (pct >= 5)  return 0.45 + (pct - 5)  * 0.06;   // 5→0.45, 10→0.75
+  if (pct >= 2)  return 0.20 + (pct - 2)  * 0.083;  // 2→0.20, 5→0.45
+  return Math.max(0, pct * 0.10);                   // 0→0, 2→0.20
+}
+
+// Supply saturation (0=tightening, 1=neutral, 2=loosening)
+// → 0..1 where higher = better for price
+function p_supply_saturation(sat){
+  // 0.0 → 1.0 (best), 1.0 → 0.5, 2.0 → 0.0
+  return Math.max(0, Math.min(1, 1 - sat / 2));
+}
+
+/* ====================================================================
+   AUTO-FETCH FROM 130POINT.COM
+   How it works:
+   1. CORS_PROXIES = list of public proxies that strip CORS headers so the
+      browser will accept the response from a third-party domain.
+   2. We try each proxy in order until one works.
+   3. We fetch 130point's search page HTML, scrape dollar amounts with regex.
+   4. Take the median (robust against outlier BIN scams / low-grade copies).
+==================================================================== */
+const CORS_PROXIES = [
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+];
+
+async function fetchViaProxy(url){
+  let lastErr;
+  for (const proxify of CORS_PROXIES){
+    try {
+      const res = await fetch(proxify(url), { method: "GET" });
+      if (!res.ok) { lastErr = new Error(`HTTP ${res.status}`); continue; }
+      const text = await res.text();
+      if (text && text.length > 500) return text;  // sanity check
+      lastErr = new Error("Empty response");
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error("All proxies failed");
+}
+
+// PRICE_SOURCES array removed — we now use the Pokemon TCG API directly
+// (it has TCGplayer + Cardmarket prices baked into card data) and only fall
+// back to eBay scraping if the API has no price for the card.
+
+async function autoFetchPrice(){
+  const status = document.getElementById("fetch_status");
+  const fullName = document.getElementById("name").value.trim();
+  const query = fullName.split(/\s+—\s+/)[0].trim();
+  if (!query){
+    status.innerHTML = '<span style="color:var(--red);">Enter a card name first.</span>';
+    return;
+  }
+
+  // Extract context: set, card number, clean name
+  const setKey = document.getElementById("set_key").value;
+  const apiSetName = setKey ? SET_API_NAMES[setKey] : null;
+  const setDisplay = setKey ? SET_PULL_RATES[setKey]?.name : null;
+  const numMatch = query.match(/#(\S+)/);
+  const cardNumber = numMatch ? numMatch[1] : null;
+
+  // For Pokemon TCG API: strip number AND rarity (API queries by name + number separately)
+  const cleanName = query
+    .replace(/\s*#\S+\s*/g, " ")
+    .replace(/\s+(SIR|HR|UR|MHR|DR|IR|MAR|AS|MB|PB|FE|BWR)$/i, "")
+    .trim();
+
+  // For eBay: keep "Mega Charizard ex #199" — Pokemon name + #number, drop rarity
+  const ebayQuery = query
+    .replace(/\s+(SIR|HR|UR|MHR|DR|IR|MAR|AS|MB|PB|FE|BWR)$/i, "")
+    .trim();
+
+  const t0 = performance.now();
+
+  // === Pokemon TCG API — only path now. eBay fetching is disabled. ===
+  status.innerHTML = `🔍 Pokemon TCG API for "${escape(cleanName)}"${setDisplay ? ` in ${escape(setDisplay)}` : ""}${cardNumber ? ` #${cardNumber}` : ""}…`;
+  let apiQuery;
+  if (apiSetName && cardNumber){
+    apiQuery = `set.name:"${apiSetName}" number:"${cardNumber}"`;
+  } else if (apiSetName){
+    apiQuery = `set.name:"${apiSetName}" name:"${cleanName}"`;
+  } else {
+    apiQuery = `name:"${cleanName}"`;
+  }
+
+  try {
+    const apiURL = `https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(apiQuery)}&select=name,number,set,tcgplayer,cardmarket&pageSize=20&orderBy=-set.releaseDate`;
+    const res = await fetch(apiURL);
+    if (res.ok){
+      const data = await res.json();
+      for (const c of (data.data || [])){
+        if (apiSetName && c.set?.name !== apiSetName) continue;
+        const best = getBestPrice(c);
+        if (best){
+          document.getElementById("current_price").value = best.priceSGD.toFixed(2);
+          window.__lastPriceSource = best.source;
+          const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
+          status.innerHTML = `✅ <strong>S$${best.priceSGD.toFixed(2)}</strong> via <strong>${best.source}</strong> <span style="color:#5e677b">· ${c.set?.name || ""} #${c.number} · ${elapsed}s</span>`;
+          predict();
+          return;
+        }
+      }
+    }
+  } catch (e){ console.warn("Pokemon TCG API failed:", e); }
+
+  // eBay fetching disabled — Pokemon TCG API was the only path tried.
+  status.innerHTML = `<span style="color:var(--orange);">❌ No price from Pokemon TCG API. Click <strong>📊 MyCollectrics</strong> for MyCollectrics, or enter manually.</span>`;
+}
+
+function onGradeChange(){
+  const gradeKey = document.getElementById("grade_key").value;
+  const info = document.getElementById("grade_info");
+  if (!gradeKey || gradeKey === "raw_nm"){
+    info.textContent = "";
+  } else {
+    const g = GRADE_TABLE[gradeKey];
+    const mult = getGradeMultiplier(gradeKey);
+    info.innerHTML = `🏷️ <strong>${g.label}</strong> · multiplier vs raw NM: <strong>×${mult.toFixed(2)}</strong>`;
+  }
+  // Gem rate preview
+  const gemInfo = document.getElementById("gem_rate_info");
+  const gemRate = parseFloat(document.getElementById("gem_rate")?.value);
+  if (gemInfo){
+    if (isFinite(gemRate) && gemRate > 0){
+      const d = describeGemRate(gemRate);
+      const gemMult = getGemRateMultiplier(gemRate, gradeKey);
+      gemInfo.innerHTML = `💎 <span style="color:${d.color};">${d.tier}</span> gem rate (${gemRate.toFixed(1)}%) · grade premium adjustment: <strong>×${gemMult.toFixed(2)}</strong>`;
+    } else {
+      gemInfo.textContent = "";
+    }
+  }
+}
+
+function togglePromo(){
+  const isPromo = document.getElementById("is_promo").checked;
+  document.getElementById("pull_rate_field").classList.toggle("hidden", isPromo);
+}
+
+function updateDemand(v){
+  const pct = parseFloat(v);
+  const bubble = document.getElementById("demand_bubble");
+  bubble.textContent = pct.toFixed(1) + "%";
+  bubble.style.left = (pct / 15 * 100) + "%";
+}
+function updateSupply(v){
+  const sat = parseFloat(v);
+  const bubble = document.getElementById("supply_bubble");
+  bubble.textContent = sat.toFixed(2);
+  bubble.style.left = (sat / 2 * 100) + "%";
+}
+
+function readForm(){
+  const id = x => document.getElementById(x);
+  const isPromo = id("is_promo").checked;
+  const demandPct = parseFloat(id("demand").value);
+  const supplySat = parseFloat(id("supply").value);
+  const setKey = id("set_key").value;
+  const rarityKey = id("rarity_key").value;
+  return {
+    name: id("name").value || "Unnamed card",
+    set_key: setKey,
+    set_name: setKey ? SET_PULL_RATES[setKey].name : "",
+    rarity_key: rarityKey,
+    rarity_label: (setKey && rarityKey) ? SET_PULL_RATES[setKey].rarities[rarityKey].label : "",
+    current_price: parseFloat(id("current_price").value) || 0,
+    is_promo: isPromo,
+    pokemon: parseFloat(id("pokemon_tier").value),
+    art:     parseFloat(id("art_tier").value) / 100,
+    art_raw: parseFloat(id("art_tier").value),
+    pull:    isPromo ? null : p_pull_rate(parseInt(id("pull_rate").value) || 1),
+    pull_raw: parseInt(id("pull_rate").value) || 1,
+    supply:  p_supply_saturation(supplySat),
+    supply_raw: supplySat,
+    demand:  p_demand_pressure(demandPct),
+    demand_raw: demandPct,
+    grade_key: id("grade_key").value || "raw_nm",
+    pop_report: parseInt(id("pop_report").value) || 0,
+    pop_growth: parseFloat(id("pop_growth")?.value) || 0,
+    gem_rate: parseFloat(id("gem_rate").value) || 0,
+    catalysts: Array.from(document.querySelectorAll(".catalyst:checked")).map(el => el.value),
+    price_for_grade: window.__lastPriceForGrade || null,
+  };
+}
+
+function pillarScores(c){
+  return {
+    pokemon: c.pokemon,
+    art:     c.art,
+    supply:  c.supply,
+    demand:  c.demand,
+  };
+}
+
+function compositeScore(s, isPromo){
+  const w = isPromo ? PROMO_WEIGHTS : WEIGHTS;
+  return s.pokemon * w.pokemon
+       + s.art     * w.art
+       + s.supply  * w.supply
+       + s.demand  * w.demand;
+}
+
+function classify(comp){
+  if (comp >= 0.80) return "ELITE";
+  if (comp >= 0.65) return "CHASE";
+  if (comp >= 0.50) return "STRONG";
+  if (comp >= 0.35) return "MID";
+  return "WEAK";
+}
+
+function predict(){
+  const c = readForm();
+  const s = pillarScores(c);
+  const comp = compositeScore(s, c.is_promo);
+  const cls = classify(comp);
+
+  // Rarity concentration: fewer cards in the rarity = each card holds more
+  // collector attention. e.g. BWR has only 3 cards (Zekrom, Reshiram, Victini)
+  // so each commands more demand than one of 30 SIRs in a big set.
+  let concentration = 1.0;
+  if (c.set_key && c.rarity_key && SET_PULL_RATES[c.set_key]){
+    const r = SET_PULL_RATES[c.set_key].rarities[c.rarity_key];
+    if (r){
+      const count = Math.max(1, Math.round(r.specific / r.any));
+      concentration = Math.max(0.92, Math.min(1.18, 1 + (10 - count) * 0.015));
+    }
+  }
+
+  // Final multiplier: composite tilts price linearly via SLOPE.
+  // No more S×D kicker — supply/demand already weighted into composite.
+  const multiplier = (1 + (comp - 0.5) * SLOPE) * concentration;
+
+  // Grade + pop + gem rate stack, plus raw-supply dampening.
+  // CRITICAL: if current_price was provided AT the selected grade, skip
+  // grade conversion — the price already reflects the grade premium/pop/gem.
+  const priceAlreadyAtGrade = c.price_for_grade && c.price_for_grade === c.grade_key;
+  const gradeMult = priceAlreadyAtGrade ? 1 : getGradeMultiplier(c.grade_key);
+  const popMult   = priceAlreadyAtGrade ? 1 : getPopMultiplier(c.pop_report);
+  const gemMult   = priceAlreadyAtGrade ? 1 : getGemRateMultiplier(c.gem_rate, c.grade_key);
+  const rawDamp   = getRawSupplyDampening(c.grade_key, c.pop_report);
+  // Grade premium suppression for low-tier Pokemon (nobody pays graded prices on bulk)
+  const gradeTierAdj = priceAlreadyAtGrade ? 1 : getGradeTierAdjustment(c.grade_key, c.pokemon);
+  // Active catalysts (Pokemon Presents, anime, reprint risk, rotation, etc.)
+  const catalystMult = getCatalystMult(c.catalysts);
+
+  const predicted = c.current_price * multiplier * gradeMult * popMult * gemMult
+                  * rawDamp * gradeTierAdj * catalystMult;
+
+  // First try: learn from similar cards in portfolio with real history.
+  // Falls back to class-based rate if not enough comparable cards.
+  // All classes have positive or zero base rates — Pokemon almost never decays.
+  const similar = predictMonthlyFromSimilar(s);
+  const baseMonthly = {
+    ELITE: 0.022, CHASE: 0.016, STRONG: 0.011,
+    MID: 0.005,   WEAK: 0.000,
+  }[cls];
+  const monthlyRaw = similar ? similar.rate : baseMonthly;
+  const monthly = clampMonthly(monthlyRaw, false);  // no hype data yet on form prediction
+  const predictionSource = similar
+    ? `${similar.n} similar cards (avg sim ${(similar.avgSimilarity * 100).toFixed(0)}%)`
+    : `${cls} base rate (no similar cards yet)`;
+  const h = horizons(predicted, monthly);
+
+  const confidence = predictionConfidence(s, similar, null, !!window.__lastMycollectrics, c.current_price > 0);
+
+  renderResults({
+    card: c, scores: s, composite: comp, classification: cls,
+    predicted, horizons: h, multiplier, monthly,
+    gradeMult, popMult, gemMult, rawDamp, gradeTierAdj, catalystMult,
+    predictionSource, similar, confidence,
+  });
+
+  return {
+    name: c.name,
+    set_name: c.set_name,
+    rarity_key: c.rarity_key,
+    rarity_label: c.rarity_label,
+    classification: cls,
+    current_price: c.current_price,
+    predicted,
+    p1m: h.m1, p3m: h.m3, p6m: h.m6, p1y: h.y1,
+    composite: comp,
+    is_promo: c.is_promo,
+    pillar_scores: s,
+    actual_price: null,
+    grade_key: c.grade_key,
+    grade_label: GRADE_TABLE[c.grade_key]?.short || "Raw NM",
+    pop_report: c.pop_report,
+    pop_growth: c.pop_growth,
+    gem_rate: c.gem_rate,
+    catalysts: c.catalysts || [],
+    price_for_grade: c.price_for_grade,
+  };
+}
+
+// Time horizons. Dropped 1d/3d/1w — sub-monthly is dominated by noise,
+// not by the trend, so those numbers were misleading.
+function horizons(price, monthly){
+  return {
+    m1: price * Math.pow(1 + monthly, 1),
+    m3: price * Math.pow(1 + monthly, 3),
+    m6: price * Math.pow(1 + monthly, 6),
+    y1: price * Math.pow(1 + monthly, 12),
+  };
+}
+
+function renderResults(r){
+  const $ = id => document.getElementById(id);
+  const bar = (name, val, raw) => val == null
+    ? `<div class="pillar-bar"><div class="name">${name}</div><div class="bar"></div><div class="val" style="color:var(--muted)">N/A</div></div>`
+    : `<div class="pillar-bar">
+        <div class="name">${name}</div>
+        <div class="bar"><div class="fill" style="width:${val*100}%"></div></div>
+        <div class="val">${val.toFixed(2)}${raw !== undefined ? `<div style="font-size:9px;color:var(--muted);">${raw}</div>` : ''}</div>
+       </div>`;
+
+  const delta = r.predicted - r.card.current_price;
+  const deltaPct = r.card.current_price ? (delta / r.card.current_price * 100) : 0;
+  const deltaCls = delta >= 0 ? "delta-pos" : "delta-neg";
+  const deltaSign = delta >= 0 ? "+" : "";
+
+  const setLine = (r.card.set_name || r.card.rarity_label)
+    ? `<div style="text-align:center; font-size:11px; color:var(--muted); margin-bottom:8px;">
+         ${r.card.set_name ? `<span style="color:var(--accent);">${r.card.set_name}</span>` : ""}
+         ${(r.card.set_name && r.card.rarity_label) ? " · " : ""}
+         ${r.card.rarity_label || ""}
+       </div>` : "";
+
+  $("results").innerHTML = `
+    ${setLine}
+    <div class="classification c-${r.classification}">${r.classification}</div>
+    ${r.confidence != null ? (() => {
+      const lbl = confidenceLabel(r.confidence);
+      // Wider band when confidence is low — at 100 confidence, ±0%; at 0 confidence, ±20%
+      const band = (100 - r.confidence) / 100 * 0.20;
+      const low = r.predicted * (1 - band);
+      const high = r.predicted * (1 + band);
+      const rangeText = band > 0.01
+        ? ` · likely range <strong>S$${low.toFixed(0)} – S$${high.toFixed(0)}</strong>`
+        : "";
+      return `<div style="text-align:center;font-size:11px;margin:-8px 0 10px 0;">
+        Confidence: <strong style="color:${lbl.color};">${lbl.text} (${r.confidence}/100)</strong>${rangeText}
+      </div>`;
+    })() : ""}
+    <div class="big-price">S$${r.predicted.toFixed(2)}</div>
+    <div style="text-align:center; font-size:13px; margin: -8px 0 14px 0;">
+      vs current S$${r.card.current_price.toFixed(2)}
+      → <span class="${deltaCls}">${deltaSign}S$${delta.toFixed(2)} (${deltaSign}${deltaPct.toFixed(1)}%)</span>
+    </div>
+
+    <div class="stat-grid" style="grid-template-columns: repeat(4, 1fr);">
+      <div class="stat"><div class="label">+1 month</div><div class="value">S$${r.horizons.m1.toFixed(0)}</div></div>
+      <div class="stat"><div class="label">+3 months</div><div class="value">S$${r.horizons.m3.toFixed(0)}</div></div>
+      <div class="stat"><div class="label">+6 months</div><div class="value">S$${r.horizons.m6.toFixed(0)}</div></div>
+      <div class="stat"><div class="label">+1 year</div><div class="value">S$${r.horizons.y1.toFixed(0)}</div></div>
+    </div>
+    <div class="mini-note" style="text-align:center;margin-top:6px;">
+      Compounded at <strong>${(r.monthly*100).toFixed(2)}% / month</strong>
+      · source: <strong>${r.predictionSource}</strong>
+      ${r.similar && r.similar.matches ? `<br><span style="color:#5e677b;font-size:10px;">Learned from: ${r.similar.matches.map(m => `${escape(m.name)} (${(m.sim*100).toFixed(0)}%, ${(m.rate*100).toFixed(1)}%/mo)`).join(" · ")}</span>` : ""}
+      <br>Rate capped at +${(MONTHLY_CAP_UP*100).toFixed(0)}% / ${(MONTHLY_CAP_DOWN_NORMAL*100).toFixed(1)}% per month (or ${(MONTHLY_CAP_DOWN_HYPED*100).toFixed(0)}% during clear corrections).
+    </div>
+
+    <h3>Pillar scores</h3>
+    ${bar("Pokemon",    r.scores.pokemon)}
+    ${bar("Art",        r.scores.art,    r.card.art_raw + "/100")}
+    ${bar("Supply",     r.scores.supply, r.card.supply_raw.toFixed(2) + " sat.")}
+    ${bar("Demand",     r.scores.demand, r.card.demand_raw.toFixed(1) + "%")}
+
+    <h3>Math</h3>
+    <div class="result-row"><span class="k">Composite score</span><span class="v">${r.composite.toFixed(3)}</span></div>
+    <div class="result-row"><span class="k">Slope</span><span class="v">${SLOPE.toFixed(2)}×</span></div>
+    <div class="result-row"><span class="k">Pillar multiplier</span><span class="v">${r.multiplier.toFixed(3)}×</span></div>
+    ${r.gradeMult && r.gradeMult !== 1.0 ? `<div class="result-row"><span class="k">Grade (${GRADE_TABLE[r.card.grade_key]?.label || r.card.grade_key})</span><span class="v">×${r.gradeMult.toFixed(2)}</span></div>` : ""}
+    ${r.popMult && r.popMult !== 1.0 ? `<div class="result-row"><span class="k">Population scarcity (count ${r.card.pop_report})</span><span class="v">×${r.popMult.toFixed(2)}</span></div>` : ""}
+    ${r.gemMult && r.gemMult !== 1.0 ? `<div class="result-row"><span class="k">Gem rate (${r.card.gem_rate.toFixed(1)}% raw graded to PSA 10)</span><span class="v">×${r.gemMult.toFixed(2)}</span></div>` : ""}
+    ${r.rawDamp && r.rawDamp !== 1.0 ? `<div class="result-row"><span class="k">Raw-supply dampening (PSA population ${r.card.pop_report})</span><span class="v">×${r.rawDamp.toFixed(2)}</span></div>` : ""}
+    ${r.gradeTierAdj && r.gradeTierAdj !== 1.0 ? `<div class="result-row"><span class="k">Grade premium tier suppression (low-tier Pokemon)</span><span class="v">×${r.gradeTierAdj.toFixed(2)}</span></div>` : ""}
+    ${r.catalystMult && r.catalystMult !== 1.0 ? `<div class="result-row"><span class="k">Active catalysts (${r.card.catalysts?.length || 0})</span><span class="v">×${r.catalystMult.toFixed(2)}</span></div>` : ""}
+    ${r.card.is_promo ? '<div class="mini-note" style="margin-top:8px;">⚡ Promo mode — pull rate excluded, other pillars re-weighted.</div>' : ''}
+  `;
+}
+
+/* ============ SIMULATION MODE ============
+   Paper trading with prediction validation. User buys cards with hypothetical
+   money, model snapshots predictions at buy time. Later refreshes compare
+   actual price movement to what was forecast.
+*/
+const SIM_KEY = "pokemon_tcg_simulation_v1";
+let simulation = (() => {
+  try { return JSON.parse(localStorage.getItem(SIM_KEY)) || null; }
+  catch (e){ return null; }
+})() || { starting_cash: 0, cash: 0, positions: [], started_at: null };
+
+function saveSim(){ localStorage.setItem(SIM_KEY, JSON.stringify(simulation)); }
+
+function simReset(){
+  const input = prompt("Starting hypothetical capital (S$)?", "10000");
+  const amount = parseFloat(input);
+  if (!isFinite(amount) || amount <= 0) return;
+  if (simulation.started_at && !confirm("This will wipe your current simulation. Continue?")) return;
+  simulation = {
+    starting_cash: amount,
+    cash: amount,
+    positions: [],
+    started_at: Date.now(),
+  };
+  saveSim();
+  renderSim();
+}
+
+function simClear(){
+  if (!confirm("Clear simulation entirely?")) return;
+  simulation = { starting_cash: 0, cash: 0, positions: [], started_at: null };
+  saveSim();
+  renderSim();
+}
+
+function simBuy(){
+  if (!simulation.started_at){
+    alert("Start a simulation first — click '🎯 Start / Reset' below.");
+    return;
+  }
+  // predict() returns the same shape as form state — but only valid if user
+  // actually filled in the form. Guard against empty/garbage input.
+  let p;
+  try { p = predict(); } catch (e){ alert("Predict failed: " + e.message); return; }
+  if (!p || !p.name || p.name === "Unnamed card" || !p.current_price || p.current_price <= 0){
+    alert("No valid card to buy. Fill in the card name and price first, then click 📊 Predict, then click 🎮 Simulation Buy.");
+    return;
+  }
+  // Quantity prompt — defaults to 1
+  const qtyInput = prompt(`Buy how many of "${p.name}" at S$${p.current_price.toFixed(2)} each?\nCash available: S$${simulation.cash.toFixed(2)}`, "1");
+  if (qtyInput === null) return;
+  const qty = Math.floor(parseFloat(qtyInput));
+  if (!isFinite(qty) || qty <= 0){ alert("Invalid quantity."); return; }
+  const totalCost = p.current_price * qty;
+  if (totalCost > simulation.cash){
+    alert(`Not enough cash. S$${totalCost.toFixed(2)} needed, S$${simulation.cash.toFixed(2)} available.`);
+    return;
+  }
+  simulation.positions.push({
+    name: p.name,
+    set_name: p.set_name,
+    grade_key: p.grade_key,
+    quantity: qty,
+    bought_at: Date.now(),
+    buy_price: p.current_price,
+    current_price: p.current_price,
+    last_refresh: null,                 // null = never refreshed yet
+    predicted_at_buy: {
+      p1m: p.p1m, p3m: p.p3m, p6m: p.p6m, p1y: p.p1y,
+    },
+    image_small: window.__lastCardImage || null,
+    price_for_grade: p.price_for_grade || null,
+  });
+  simulation.cash -= totalCost;
+  saveSim();
+  renderSim();
+}
+
+/* Closed/sold positions history — kept so you can review past trades. */
+simulation.closed = simulation.closed || [];
+function simSellWithRecord(i){
+  const pos = simulation.positions[i];
+  if (!pos) return;
+  const qty = pos.quantity || 1;
+  const proceeds = pos.current_price * qty;
+  const costBasis = pos.buy_price * qty;
+  if (!confirm(`Sell ${qty}× ${pos.name} at S$${pos.current_price.toFixed(2)} = S$${proceeds.toFixed(2)}? P/L: S$${(proceeds - costBasis).toFixed(2)}`)) return;
+  simulation.cash += proceeds;
+  simulation.closed = simulation.closed || [];
+  simulation.closed.push({
+    ...pos,
+    sold_at: Date.now(),
+    sold_price: pos.current_price,
+    pl_dollars: proceeds - costBasis,
+    pl_pct: costBasis ? ((proceeds - costBasis) / costBasis * 100) : 0,
+  });
+  simulation.positions.splice(i, 1);
+  saveSim();
+  renderSim();
+}
+
+function simSell(i){ simSellWithRecord(i); }
+
+async function refreshSimPrices(){
+  if (!simulation.positions.length){ alert("No simulation positions yet."); return; }
+  if (!confirm(`Refresh ${simulation.positions.length} sim card price(s)? Tries Pokemon TCG API first, MyCollectrics as fallback.`)) return;
+  let updated = 0, failed = 0;
+  const failedNames = [];
+  for (const pos of simulation.positions){
+    const cleanName = pos.name.split(/\s+—\s+/)[0]
+      .replace(/\s*#\S+\s*/g, " ")
+      .replace(/\s+(SIR|HR|UR|MHR|DR|IR|MAR|AS|MB|PB|FE|BWR)$/i, "")
+      .trim();
+
+    let newPrice = null;
+    // Path 1: Pokemon TCG API
+    try {
+      const url = `https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(`name:"${cleanName}"`)}&select=tcgplayer,cardmarket&pageSize=5`;
+      const res = await fetch(url);
+      if (res.ok){
+        const data = await res.json();
+        for (const ac of (data.data || [])){
+          const best = getBestPrice(ac);
+          if (best){ newPrice = best.priceSGD; break; }
+        }
+      }
+    } catch (e){}
+
+    // Path 2: MyCollectrics fallback if API gave nothing AND proxy is up
+    if (!newPrice && window.__proxyAvailable){
+      try {
+        const result = await fetchFromMycollectrics(cleanName);
+        if (result?.parsed){
+          let usd = null;
+          if (pos.grade_key === "psa_10")     usd = result.parsed.psa10_price_usd;
+          else if (pos.grade_key === "psa_9") usd = result.parsed.psa9_price_usd;
+          else                                usd = result.parsed.raw_price_usd;
+          if (usd) newPrice = usd * USD_TO_SGD;
+        }
+      } catch (e){}
+    }
+
+    if (newPrice){
+      pos.current_price = newPrice;
+      pos.last_refresh = Date.now();
+      updated++;
+    } else {
+      failed++;
+      failedNames.push(pos.name);
+    }
+    await new Promise(r => setTimeout(r, 250));
+  }
+  saveSim();
+  renderSim();
+  let msg = `✅ Updated ${updated}/${simulation.positions.length} sim cards.`;
+  if (failedNames.length) msg += `\n\n❌ Failed: ${failedNames.slice(0, 8).join(", ")}${failedNames.length > 8 ? `…and ${failedNames.length - 8} more` : ""}`;
+  alert(msg);
+}
+
+/* Compare actual growth to what the model predicted for the elapsed time.
+   Linearly interpolates between snapshot horizons (1m/3m/6m/1y) given days held. */
+function simExpectedAtDays(snapshot, buyPrice, days){
+  if (!snapshot || !buyPrice) return null;
+  const points = [
+    { d: 0,   p: buyPrice },
+    { d: 30,  p: snapshot.p1m },
+    { d: 90,  p: snapshot.p3m },
+    { d: 180, p: snapshot.p6m },
+    { d: 365, p: snapshot.p1y },
+  ].filter(x => isFinite(x.p));
+  if (points.length < 2) return null;
+  if (days <= points[0].d) return points[0].p;
+  if (days >= points[points.length - 1].d) return points[points.length - 1].p;
+  for (let i = 0; i < points.length - 1; i++){
+    if (days >= points[i].d && days <= points[i+1].d){
+      const t = (days - points[i].d) / (points[i+1].d - points[i].d);
+      return points[i].p + t * (points[i+1].p - points[i].p);
+    }
+  }
+  return null;
+}
+
+function renderSim(){
+  const stats = document.getElementById("sim_stats");
+  const intro = document.getElementById("sim_intro");
+  const body = document.getElementById("sim_body");
+
+  if (!simulation.started_at){
+    stats.style.display = "none";
+    intro.style.display = "block";
+    body.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px;">Click 🎯 Start / Reset below to begin.</td></tr>';
+    return;
+  }
+
+  stats.style.display = "grid";
+  intro.style.display = "none";
+
+  // Compute total holdings including quantity
+  const holdings = simulation.positions.reduce(
+    (a, p) => a + (p.current_price || 0) * (p.quantity || 1), 0);
+  const totalValue = simulation.cash + holdings;
+  const pl = totalValue - simulation.starting_cash;
+  const days = Math.floor((Date.now() - simulation.started_at) / (24*3600*1000));
+
+  document.getElementById("sim_starting").textContent = "S$" + simulation.starting_cash.toFixed(0);
+  document.getElementById("sim_cash").textContent     = "S$" + simulation.cash.toFixed(0);
+  document.getElementById("sim_holdings").textContent = "S$" + holdings.toFixed(0);
+  const plEl = document.getElementById("sim_pl");
+  plEl.textContent = (pl >= 0 ? "+" : "") + "S$" + pl.toFixed(0);
+  plEl.style.color = pl >= 0 ? "var(--green)" : "var(--red)";
+  document.getElementById("sim_days").textContent = days;
+
+  if (simulation.positions.length === 0 && (!simulation.closed || simulation.closed.length === 0)){
+    body.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px;">No positions yet. Predict a card and click 🎮 Simulation Buy.</td></tr>';
+    return;
+  }
+
+  const rows = simulation.positions.map((p, i) => {
+    const qty = p.quantity || 1;
+    const daysHeld = Math.floor((Date.now() - p.bought_at) / (24*3600*1000));
+    const buyDate = new Date(p.bought_at).toISOString().slice(0, 10);
+    const notRefreshed = !p.last_refresh;
+    const actualPct = (p.buy_price && !notRefreshed) ? ((p.current_price - p.buy_price) / p.buy_price * 100) : null;
+    const expected = (p.predicted_at_buy && !notRefreshed)
+      ? simExpectedAtDays(p.predicted_at_buy, p.buy_price, daysHeld) : null;
+    const expectedPct = (expected && p.buy_price) ? ((expected - p.buy_price) / p.buy_price * 100) : null;
+    const error = (actualPct != null && expectedPct != null) ? actualPct - expectedPct : null;
+
+    const actualCell = notRefreshed
+      ? '<span style="color:var(--muted);font-size:10px;">not refreshed yet</span>'
+      : `<span class="${actualPct >= 0 ? 'delta-pos' : 'delta-neg'}">${actualPct >= 0 ? "+" : ""}${actualPct.toFixed(1)}%</span>`;
+
+    const verdict = notRefreshed
+      ? '<span style="color:var(--muted);font-size:10px;">refresh to compare</span>'
+      : (daysHeld < 7)
+        ? '<span style="color:var(--muted);font-size:10px;">need ≥7d</span>'
+        : error == null
+          ? '<span style="color:var(--muted);">—</span>'
+          : Math.abs(error) <= 5
+            ? '<span class="delta-pos">✅ on target</span>'
+            : error > 0
+              ? `<span class="delta-pos">📈 beat by ${error.toFixed(1)}%</span>`
+              : `<span class="delta-neg">📉 below by ${Math.abs(error).toFixed(1)}%</span>`;
+
+    return `
+      <tr>
+        <td>
+          <div style="display:flex;gap:6px;align-items:center;">
+            ${p.image_small ? `<img src="${escape(p.image_small)}" alt="" style="width:28px;height:auto;border-radius:3px;"/>` : ""}
+            <div>${escape(p.name)}${qty > 1 ? ` <span class="pill c-MID">×${qty}</span>` : ""}${p.grade_key && p.grade_key !== "raw_nm" ? ` <span class="pill c-CHASE">${GRADE_TABLE[p.grade_key]?.short || p.grade_key}</span>` : ""}</div>
+          </div>
+        </td>
+        <td>${buyDate}</td>
+        <td>${daysHeld}d</td>
+        <td>S$${p.buy_price.toFixed(2)}</td>
+        <td>S$${p.current_price.toFixed(2)}${qty > 1 ? `<br><span style="font-size:9px;color:var(--muted);">×${qty} = S$${(p.current_price*qty).toFixed(0)}</span>` : ""}</td>
+        <td>${actualCell}</td>
+        <td style="font-size:10px;color:var(--muted);">
+          ${expectedPct != null ? `at ${daysHeld}d: <strong style="color:var(--text);">${expectedPct >= 0 ? "+" : ""}${expectedPct.toFixed(1)}%</strong><br>` : ""}
+          1m ${p.predicted_at_buy?.p1m != null ? "S$" + p.predicted_at_buy.p1m.toFixed(0) : "—"} ·
+          1y ${p.predicted_at_buy?.p1y != null ? "S$" + p.predicted_at_buy.p1y.toFixed(0) : "—"}
+        </td>
+        <td>${verdict}</td>
+        <td>
+          <button class="secondary" onclick="simSell(${i})" style="padding:2px 8px;font-size:10px;">Sell</button>
+        </td>
+      </tr>`;
+  }).join("");
+
+  // Closed trades summary at the bottom
+  let closedRow = "";
+  if (simulation.closed && simulation.closed.length > 0){
+    const totalRealized = simulation.closed.reduce((a, c) => a + (c.pl_dollars || 0), 0);
+    const wins = simulation.closed.filter(c => c.pl_dollars > 0).length;
+    closedRow = `<tr><td colspan="9" style="background:var(--panel2);font-size:11px;color:var(--muted);">
+      📊 Closed trades: ${simulation.closed.length} · ${wins} winners · realized P/L: <strong style="color:${totalRealized>=0?'var(--green)':'var(--red)'};">${totalRealized>=0?'+':''}S$${totalRealized.toFixed(2)}</strong>
+    </td></tr>`;
+  }
+
+  body.innerHTML = rows + closedRow;
+}
+
+/* ============ PORTFOLIO ============ */
+const PORTFOLIO_KEY = "pokemon_tcg_portfolio_v3";
+let portfolio = JSON.parse(localStorage.getItem(PORTFOLIO_KEY) || "[]");
+
+function addToPortfolio(){
+  const p = predict();
+  if (!p.name || p.name === "Unnamed card") {
+    if (!confirm("No card name entered. Add anyway?")) return;
+  }
+  // Use MyCollectrics history if we have it, otherwise just current price
+  const seedHistory = (window.__lastMcHistory && window.__lastMcHistory.length >= 2)
+    ? [...window.__lastMcHistory, { ts: Date.now(), price: p.current_price }]
+    : [{ ts: Date.now(), price: p.current_price }];
+
+  portfolio.push({
+    ...p,
+    price_paid: p.current_price,
+    sold_at_price: null,
+    price_source: window.__lastPriceSource || null,
+    price_locked: false,
+    price_history: seedHistory,
+    image_small: window.__lastCardImage || null,
+    addedAt: new Date().toISOString(),
+  });
+  window.__lastMcHistory = null;  // consumed
+  savePortfolio();
+  renderPortfolio();
+}
+
+/* === Floor / Ceiling detection from accumulated price history ===
+   History points get added on every Refresh prices. The min/max of
+   recent points form a soft floor/ceiling that adjusts predictions:
+   prices near recent ceiling get dampened (mean reversion), near
+   floor get boosted.
+*/
+function priceStats(c){
+  const h = c.price_history || [];
+  if (!h.length) return null;
+  const prices = h.map(x => x.price).filter(x => x > 0);
+  if (!prices.length) return null;
+  const floor = Math.min(...prices);
+  const ceiling = Math.max(...prices);
+  const range = ceiling - floor;
+  const pos = range > 0 ? (c.current_price - floor) / range : 0.5;  // 0=at floor, 1=at ceiling
+  return { floor, ceiling, range, pos, n: prices.length };
+}
+
+/* Tiny inline sparkline of price history (SVG, ~60×18) */
+function sparkline(history, width = 70, height = 20){
+  if (!history || history.length < 2) {
+    return '<span style="color:var(--muted);font-size:10px;">—</span>';
+  }
+  const prices = history.map(x => x.price);
+  const min = Math.min(...prices), max = Math.max(...prices);
+  const range = max - min || 1;
+  const pts = prices.map((p, i) => {
+    const x = (i / (prices.length - 1)) * width;
+    const y = height - ((p - min) / range) * (height - 2) - 1;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+  const delta = prices[prices.length-1] - prices[0];
+  const color = delta >= 0 ? "var(--green)" : "var(--red)";
+  return `<svg width="${width}" height="${height}" style="vertical-align:middle;">
+    <polyline points="${pts}" stroke="${color}" stroke-width="1.4" fill="none"/>
+  </svg>`;
+}
+
+/* Shared: recompute a card's prediction + horizons from its stored pillar_scores
+   and current_price (used by applyWeights and refreshPortfolioPrices) */
+function recomputePrediction(c){
+  if (!c.pillar_scores || c.is_promo) return;
+  const s = c.pillar_scores;
+  const comp = s.pokemon*WEIGHTS.pokemon + s.art*WEIGHTS.art
+             + s.supply*WEIGHTS.supply + s.demand*WEIGHTS.demand;
+  c.composite = comp;
+  c.classification = classify(comp);
+
+  let concentration = 1.0;
+  if (c.set_key && c.rarity_key && SET_PULL_RATES[c.set_key]){
+    const r = SET_PULL_RATES[c.set_key].rarities[c.rarity_key];
+    if (r){
+      const count = Math.max(1, Math.round(r.specific / r.any));
+      concentration = Math.max(0.92, Math.min(1.18, 1 + (10 - count) * 0.015));
+    }
+  }
+
+  let predicted = c.current_price * (1 + (comp - 0.5) * SLOPE) * concentration;
+
+  // Apply grade + pop + gem rate multipliers + raw-supply dampening + catalysts
+  const priceAtGrade = c.price_for_grade && c.price_for_grade === c.grade_key;
+  const gMult   = priceAtGrade ? 1 : getGradeMultiplier(c.grade_key);
+  const pMult   = priceAtGrade ? 1 : getPopMultiplier(c.pop_report);
+  const gemMlt  = priceAtGrade ? 1 : getGemRateMultiplier(c.gem_rate, c.grade_key);
+  const rawDmp  = getRawSupplyDampening(c.grade_key, c.pop_report);
+  const gradeTAdj = priceAtGrade ? 1 : getGradeTierAdjustment(c.grade_key, c.pillar_scores?.pokemon);
+  const catM    = getCatalystMult(c.catalysts);
+  predicted *= gMult * pMult * gemMlt * rawDmp * gradeTAdj * catM;
+
+  // Floor/ceiling adjustment from price history (needs ≥3 data points)
+  const ps = priceStats(c);
+  if (ps && ps.n >= 3 && ps.range > 0){
+    if (ps.pos > 0.85) predicted *= 0.95;
+    else if (ps.pos < 0.15) predicted *= 1.05;
+    predicted = Math.max(ps.floor * 0.90, Math.min(ps.ceiling * 1.10, predicted));
+  }
+  c.predicted = predicted;
+
+  // === Monthly growth rate — similarity-based, with velocity adjustment ===
+  // First: try to learn from similar cards in portfolio that have history
+  const similar = predictMonthlyFromSimilar(s, c);
+  let monthly;
+  if (similar){
+    monthly = similar.rate;
+    c.prediction_source = `${similar.n} similar (similarity ${(similar.avgSimilarity*100).toFixed(0)}%)`;
+  } else {
+    // Fallback: class-based rate. All classes start non-negative — Pokemon
+    // does not naturally decay. Negative growth only kicks in via a detected
+    // correction (hype pump being unwound) or an active reprint catalyst.
+    monthly = { ELITE: 0.022, CHASE: 0.016, STRONG: 0.011, MID: 0.005, WEAK: 0.000 }[c.classification];
+    c.prediction_source = `${c.classification} base`;
+  }
+
+  // Velocity adjustment from this card's own price history.
+  // CRITICAL: negative adjustments only apply when there's a clear hype pump.
+  // A card at recent ceiling without a pump signal just stays flat — Pokemon
+  // doesn't crash from "being expensive."
+  const isHyped = detectHypePump(c);
+  if (ps && ps.n >= 3 && ps.range > 0){
+    if (isHyped && ps.pos > 0.85)      monthly -= 0.025;  // pump + ceiling = correction
+    else if (isHyped && ps.pos > 0.65) monthly -= 0.010;  // pump + upper half = mild revert
+    else if (ps.pos > 0.85)            monthly -= 0.003;  // ceiling only, no pump = barely down
+    else if (ps.pos < 0.15)            monthly += 0.020;  // at floor = recovery
+    else if (ps.pos < 0.35)            monthly += 0.005;  // lower half = mild bounce
+  }
+
+  // Clamp using the hype-aware floor (-0.5% normal, -3% during corrections)
+  monthly = clampMonthly(monthly, isHyped);
+  c.monthly_rate = monthly;
+  const h = horizons(c.predicted, monthly);
+  c.p1m = h.m1; c.p3m = h.m3; c.p6m = h.m6; c.p1y = h.y1;
+}
+
+function setPaidPrice(i, v){
+  portfolio[i].price_paid = v === "" ? null : parseFloat(v);
+  savePortfolio(); renderPortfolio();
+}
+function setSoldPrice(i, v){
+  portfolio[i].sold_at_price = v === "" ? null : parseFloat(v);
+  savePortfolio(); renderPortfolio();
+}
+
+/* ===== CSV IMPORT (Collectr & generic) =====
+   Parse a flat CSV with header row. Try to detect columns by name
+   (fuzzy/synonym match), bulk-import to portfolio.
+*/
+function parseCSV(text){
+  const rows = [];
+  let row = [], field = "", inQuotes = false;
+  for (let i = 0; i < text.length; i++){
+    const ch = text[i];
+    if (inQuotes){
+      if (ch === '"' && text[i+1] === '"'){ field += '"'; i++; }
+      else if (ch === '"'){ inQuotes = false; }
+      else { field += ch; }
+    } else {
+      if (ch === '"'){ inQuotes = true; }
+      else if (ch === ','){ row.push(field); field = ""; }
+      else if (ch === '\n'){ row.push(field); rows.push(row); row = []; field = ""; }
+      else if (ch === '\r'){ /* skip */ }
+      else { field += ch; }
+    }
+  }
+  if (field.length || row.length){ row.push(field); rows.push(row); }
+  return rows.filter(r => r.some(c => c.trim()));
+}
+
+const RARITY_NAME_TO_KEY = {
+  "special illustration rare": "SIR", "sir": "SIR",
+  "illustration rare": "IR", "ir": "IR",
+  "hyper rare": "HR", "hr": "HR",
+  "ultra rare": "UR", "ur": "UR",
+  "double rare": "DR", "dr": "DR",
+  "ace spec rare": "AS", "ace spec": "AS", "as": "AS",
+  "mega hyper rare": "MHR", "mhr": "MHR",
+  "mega attack rare": "MAR", "mar": "MAR",
+  "black white rare": "BWR", "bwr": "BWR",
+  "master ball foil": "MB", "master ball": "MB", "mb": "MB",
+  "poke ball foil": "PB", "poké ball foil": "PB", "poke ball": "PB", "pb": "PB",
+  "foil energy": "FE", "fe": "FE",
+};
+
+function matchSetKey(csvSetName){
+  if (!csvSetName) return "";
+  const q = csvSetName.toLowerCase().trim();
+  for (const [k, s] of Object.entries(SET_PULL_RATES)){
+    const sn = s.name.toLowerCase();
+    if (sn === q || sn.includes(q) || q.includes(sn)) return k;
+  }
+  return "";
+}
+
+async function importCollectrCSV(){
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".csv,text/csv";
+  input.onchange = async e => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    const rows = parseCSV(text);
+    if (rows.length < 2){ alert("CSV looks empty."); return; }
+
+    const headers = rows[0].map(h => h.trim().toLowerCase());
+    const findCol = (...synonyms) => {
+      for (const s of synonyms){
+        const idx = headers.findIndex(h => h === s || h.includes(s));
+        if (idx >= 0) return idx;
+      }
+      return -1;
+    };
+    const cols = {
+      name:     findCol("card name", "name", "card"),
+      set:      findCol("set name", "set", "expansion"),
+      number:   findCol("card number", "number", "card #", "#"),
+      rarity:   findCol("rarity"),
+      paid:     findCol("purchase price", "paid", "cost", "bought for", "buy price"),
+      current:  findCol("current value", "market price", "market value", "current price", "value", "price"),
+      condition:findCol("condition", "grade"),
+    };
+
+    if (cols.name < 0){
+      alert("CSV doesn't have a recognizable 'Card Name' / 'Name' column. Headers found:\n" + headers.join(", "));
+      return;
+    }
+
+    let imported = 0, skipped = 0, withPrices = 0;
+    for (let i = 1; i < rows.length; i++){
+      const r = rows[i];
+      const name = (r[cols.name] || "").trim();
+      if (!name){ skipped++; continue; }
+
+      const csvSet     = cols.set     >= 0 ? (r[cols.set] || "").trim() : "";
+      const csvNumber  = cols.number  >= 0 ? (r[cols.number] || "").trim() : "";
+      const csvRarity  = cols.rarity  >= 0 ? (r[cols.rarity] || "").trim() : "";
+      const csvPaid    = cols.paid    >= 0 ? parseFloat((r[cols.paid] || "").replace(/[^0-9.]/g, "")) : NaN;
+      const csvCurrent = cols.current >= 0 ? parseFloat((r[cols.current] || "").replace(/[^0-9.]/g, "")) : NaN;
+
+      const setKey = matchSetKey(csvSet);
+      const rarityKey = RARITY_NAME_TO_KEY[csvRarity.toLowerCase()] || "";
+      const currentPrice = isFinite(csvCurrent) ? csvCurrent : 0;
+      if (currentPrice > 0) withPrices++;
+
+      const displayName = name + (csvNumber ? ` #${csvNumber}` : "") + (rarityKey ? ` ${rarityKey}` : "");
+
+      portfolio.push({
+        name: displayName,
+        set_name: setKey ? SET_PULL_RATES[setKey].name : csvSet,
+        set_key: setKey,
+        rarity_key: rarityKey,
+        rarity_label: (setKey && rarityKey) ? SET_PULL_RATES[setKey].rarities[rarityKey]?.label : csvRarity,
+        classification: "WEAK",     // no pillar scores → leave unrated
+        current_price: currentPrice,
+        predicted: currentPrice,    // no prediction without pillars
+        composite: 0,
+        is_promo: false,
+        p1m: currentPrice, p3m: currentPrice, p6m: currentPrice, p1y: currentPrice,
+        pillar_scores: null,
+        actual_price: null,
+        price_paid: isFinite(csvPaid) ? csvPaid : null,
+        sold_at_price: null,
+        price_history: currentPrice > 0 ? [{ ts: Date.now(), price: currentPrice }] : [],
+        importedFrom: "Collectr",
+        addedAt: new Date().toISOString(),
+      });
+      imported++;
+    }
+
+    savePortfolio();
+    renderPortfolio();
+    alert(`✅ Imported ${imported} cards (${withPrices} with prices) · ${skipped} skipped.\n\nImported cards are unrated (no pillar scores). Click 🔄 Refresh prices to pull TCGplayer prices, or use the form above to re-score any that matter.`);
+  };
+  input.click();
+}
+
+async function refreshPortfolioPrices(){
+  const cards = portfolio.filter(c => !c.is_promo && !c.price_locked);
+  if (!cards.length){ alert("No unlocked cards to refresh. (Promo or 🔒-locked cards are skipped.)"); return; }
+  if (!confirm(`Refresh latest prices for ${cards.length} card(s)? May take ~${Math.ceil(cards.length*0.3)}s. Locked cards (🔒) will be skipped.`)) return;
+
+  const btn = document.getElementById("refresh-btn");
+  btn.disabled = true;
+  let updated = 0, failed = 0;
+  const failedNames = [];
+
+  for (let i = 0; i < portfolio.length; i++){
+    const c = portfolio[i];
+    if (c.is_promo || c.price_locked) continue;
+    btn.textContent = `🔄 ${i+1}/${portfolio.length}…`;
+
+    const baseName = c.name.split(/\s+—\s+/)[0];
+    // API query: strip number AND rarity (API queries fields separately)
+    const cleanName = baseName
+      .replace(/\s*#\S+\s*/g, " ")
+      .replace(/\s+(SIR|HR|UR|MHR|DR|IR|MAR|AS|MB|PB|FE|BWR)$/i, "")
+      .trim();
+    // eBay query: keep #number, strip rarity ("Mega Charizard ex #199")
+    const ebayQuery = baseName
+      .replace(/\s+(SIR|HR|UR|MHR|DR|IR|MAR|AS|MB|PB|FE|BWR)$/i, "")
+      .trim();
+
+    let newPrice = null, newSource = null;
+
+    // === Pokemon TCG API (only path — eBay fetching disabled) ===
+    try {
+      const url = `https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(`name:"${cleanName}"`)}&select=tcgplayer,cardmarket&pageSize=10`;
+      const res = await fetch(url);
+      if (res.ok){
+        const data = await res.json();
+        for (const ac of (data.data || [])){
+          const best = getBestPrice(ac);
+          if (best){
+            newPrice = best.priceSGD;
+            newSource = best.source;
+            break;
+          }
+        }
+      }
+    } catch (e){ console.warn("API failed for", c.name, e); }
+
+    if (newPrice){
+      c.current_price = parseFloat(newPrice.toFixed(2));
+      c.price_source = newSource;
+      c.price_history = c.price_history || [];
+      const last = c.price_history[c.price_history.length - 1];
+      if (!last || Math.abs(last.price - c.current_price) > 0.01 ||
+          (Date.now() - last.ts) > 12 * 3600 * 1000){
+        c.price_history.push({ ts: Date.now(), price: c.current_price });
+        if (c.price_history.length > 60) c.price_history.shift();
+      }
+      recomputePrediction(c);
+      updated++;
+    } else {
+      failed++;
+      failedNames.push(c.name);
+    }
+
+    await new Promise(r => setTimeout(r, 250));
+  }
+
+  savePortfolio();
+  renderPortfolio();
+  btn.disabled = false;
+  btn.textContent = "🔄 Refresh prices";
+  let msg = `✅ Updated ${updated} card(s) · ❌ ${failed} have no API price.`;
+  if (failedNames.length){
+    msg += `\n\nNo-price cards (enter manually in the Current S$ field, then click 🔒 to lock):\n• ` + failedNames.slice(0, 15).join("\n• ");
+    if (failedNames.length > 15) msg += `\n… and ${failedNames.length - 15} more`;
+  }
+  alert(msg);
+}
+
+function setCurrentPrice(i, v){
+  const val = v === "" ? 0 : parseFloat(v);
+  portfolio[i].current_price = val;
+  portfolio[i].price_source = "manual";
+  portfolio[i].price_locked = true;     // manual edits auto-lock
+  portfolio[i].price_history = portfolio[i].price_history || [];
+  if (val > 0){
+    portfolio[i].price_history.push({ ts: Date.now(), price: val });
+    if (portfolio[i].price_history.length > 60) portfolio[i].price_history.shift();
+  }
+  recomputePrediction(portfolio[i]);
+  savePortfolio(); renderPortfolio();
+}
+function togglePriceLock(i){
+  portfolio[i].price_locked = !portfolio[i].price_locked;
+  savePortfolio(); renderPortfolio();
+}
+
+/* Manually seed a historical price point — lets the user backdate
+   data so the kNN model has training examples without having to
+   actually wait months for natural history to accumulate.
+*/
+function addHistoricalPrice(i){
+  const c = portfolio[i];
+  const monthsAgo = parseFloat(prompt(`Add past price for "${c.name}":\n\nHow many months ago? (e.g. 3 for 3 months ago, 0.5 for 2 weeks ago)`));
+  if (!isFinite(monthsAgo) || monthsAgo < 0) return;
+  const price = parseFloat(prompt(`What was the price ${monthsAgo} months ago? (in S$)`));
+  if (!isFinite(price) || price <= 0) return;
+  const ts = Date.now() - (monthsAgo * 30 * 24 * 3600 * 1000);
+  c.price_history = c.price_history || [];
+  c.price_history.push({ ts, price });
+  // Keep history sorted by timestamp
+  c.price_history.sort((a, b) => a.ts - b.ts);
+  if (c.price_history.length > 60) c.price_history = c.price_history.slice(-60);
+  recomputePrediction(c);
+  savePortfolio();
+  renderPortfolio();
+}
+function savePortfolio(){ localStorage.setItem(PORTFOLIO_KEY, JSON.stringify(portfolio)); }
+function deleteCard(i){ portfolio.splice(i,1); savePortfolio(); renderPortfolio(); }
+function setActualPrice(i, v){
+  portfolio[i].actual_price = v === "" ? null : parseFloat(v);
+  savePortfolio();
+  renderPortfolio();
+}
+
+/* ============ CALIBRATION ============
+   Grid-searches weight combinations (sum=1, step=0.05) to find the
+   set that minimizes mean error vs actual prices.
+*/
+function calibrateWeights(){
+  const cards = portfolio.filter(c => c.actual_price && c.pillar_scores && !c.is_promo);
+  if (cards.length < 3) {
+    alert("Need at least 3 non-promo cards with Actual $ filled in.\n\nFill in the 'Actual $' column for cards you know the real sold price of, then click Calibrate again.");
+    return;
+  }
+
+  // Convert each card's known price into a target composite score.
+  // predicted = current * (1 + (comp - 0.5) * SLOPE)  →  comp = 0.5 + (actual/current - 1) / SLOPE
+  const targets = cards.map(c => ({
+    s: c.pillar_scores,
+    target: 0.5 + (c.actual_price / c.current_price - 1) / SLOPE,
+    label: c.name,
+  }));
+
+  // Current MAE (using existing weights) for "before" comparison
+  const maeFor = (w) => targets.reduce((a,t) => {
+    const comp = t.s.pokemon*w.pokemon + t.s.art*w.art
+               + t.s.supply*w.supply + t.s.demand*w.demand;
+    return a + Math.abs(comp - t.target);
+  }, 0) / targets.length;
+
+  const maeBefore = maeFor(WEIGHTS);
+
+  // Grid search over 4 weights (pull removed) summing to 1.0 at 0.05 step
+  const STEP = 0.05, UNITS = 20;
+  let bestMAE = Infinity, bestW = null;
+  for (let p = 0; p <= UNITS; p++){
+    for (let a = 0; a + p <= UNITS; a++){
+      for (let s = 0; s + p + a <= UNITS; s++){
+        const d = UNITS - p - a - s;
+        const w = { pokemon: p*STEP, art: a*STEP, supply: s*STEP, demand: d*STEP };
+        const mae = maeFor(w);
+        if (mae < bestMAE){ bestMAE = mae; bestW = w; }
+      }
+    }
+  }
+
+  showCalibrationResults(bestW, maeBefore, bestMAE, cards.length);
+}
+
+function showCalibrationResults(suggested, maeBefore, maeAfter, n){
+  const fmtW = (w, label) => `
+    <div class="result-row"><span class="k">${label} — Pokemon</span><span class="v">${(w.pokemon*100).toFixed(0)}%</span></div>
+    <div class="result-row"><span class="k">${label} — Art</span><span class="v">${(w.art*100).toFixed(0)}%</span></div>
+    <div class="result-row"><span class="k">${label} — Supply</span><span class="v">${(w.supply*100).toFixed(0)}%</span></div>
+    <div class="result-row"><span class="k">${label} — Demand</span><span class="v">${(w.demand*100).toFixed(0)}%</span></div>
+  `;
+
+  const improvement = ((maeBefore - maeAfter) / maeBefore * 100);
+  const panel = document.getElementById("calibration-results");
+  panel.style.display = "block";
+  panel.innerHTML = `
+    <h3 style="margin-top:0;">🔬 Calibration results <span style="color:var(--muted);font-weight:400;font-size:11px;">(${n} cards)</span></h3>
+    <div class="stat-grid" style="grid-template-columns:1fr 1fr 1fr;">
+      <div class="stat"><div class="label">MAE before</div><div class="value">${(maeBefore*100).toFixed(1)}</div></div>
+      <div class="stat"><div class="label">MAE after</div><div class="value">${(maeAfter*100).toFixed(1)}</div></div>
+      <div class="stat"><div class="label">Improvement</div><div class="value">${improvement.toFixed(0)}%</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;">
+      <div>${fmtW(WEIGHTS, "Current")}</div>
+      <div>${fmtW(suggested, "Suggested")}</div>
+    </div>
+
+    <div class="btn-row" style="margin-top:14px;">
+      <button onclick='applyWeights(${JSON.stringify(suggested)})'>✅ Apply suggested weights</button>
+      <button class="secondary" onclick="resetWeights()">🔄 Reset to defaults</button>
+    </div>
+    <div class="mini-note" style="margin-top:8px;">
+      MAE = mean absolute error in composite score (lower is better). Applied weights persist across reloads.
+    </div>
+  `;
+}
+
+function applyWeights(w){
+  WEIGHTS = w;
+  saveWeights();
+  // Re-predict each card with the new weights
+  portfolio.forEach(c => recomputePrediction(c));
+  savePortfolio();
+  renderPortfolio();
+  predict();  // refresh the active prediction panel
+  alert("✅ New weights applied and saved.");
+}
+
+function resetWeights(){
+  if (!confirm("Reset weights to defaults?")) return;
+  WEIGHTS = {...DEFAULT_WEIGHTS};
+  PROMO_WEIGHTS = {...DEFAULT_PROMO_WEIGHTS};
+  saveWeights();
+  document.getElementById("calibration-results").style.display = "none";
+  predict();
+  renderPortfolio();
+}
+function clearPortfolio(){
+  if (!confirm("Clear entire portfolio?")) return;
+  portfolio = []; savePortfolio(); renderPortfolio();
+}
+function renderPortfolio(){
+  const body = document.getElementById("portfolio-body");
+  if (portfolio.length === 0){
+    body.innerHTML = `<tr><td colspan="16" style="text-align:center;color:var(--muted);padding:20px;">No cards yet.</td></tr>`;
+    document.getElementById("portfolio-summary").style.display = "none";
+    return;
+  }
+  const inputCSS = "width:78px;background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:3px 5px;border-radius:3px;font-family:inherit;font-size:11px;";
+
+  body.innerHTML = portfolio.map((c,i) => {
+    // P/L: realized (sold − paid) if sold, otherwise unrealized (current − paid)
+    const isSold = c.sold_at_price != null;
+    const paid = c.price_paid ?? null;
+    let plCell = "—";
+    if (paid != null){
+      const exitPrice = isSold ? c.sold_at_price : c.current_price;
+      const pl = exitPrice - paid;
+      const plPct = paid ? (pl / paid * 100) : 0;
+      const plCls = pl >= 0 ? "delta-pos" : "delta-neg";
+      const sign = pl >= 0 ? "+" : "";
+      plCell = `<span class="${plCls}">${sign}S$${pl.toFixed(0)}<br><span style="font-size:9px;">${sign}${plPct.toFixed(0)}%</span></span>`;
+    }
+
+    let errCell = "—";
+    if (c.actual_price && c.predicted){
+      const err = (c.predicted - c.actual_price) / c.actual_price * 100;
+      const errCls = Math.abs(err) <= 10 ? "delta-pos" : "delta-neg";
+      errCell = `<span class="${errCls}">${err >= 0 ? "+" : ""}${err.toFixed(1)}%</span>`;
+    }
+
+    const soldBadge = isSold ? ' <span class="pill c-WEAK">SOLD</span>' : '';
+
+    const ps = priceStats(c);
+    const histRate = historicalMonthlyRate(c);
+    const rateStr = histRate != null
+      ? `<br><span style="font-size:9px;color:${histRate >= 0 ? 'var(--green)' : 'var(--red)'};">${histRate >= 0 ? "+" : ""}${(histRate*100).toFixed(1)}%/mo</span>`
+      : "";
+    const historyCell = ps && ps.n >= 2
+      ? `${sparkline(c.price_history)}<br><span style="font-size:9px;color:var(--muted);">S$${ps.floor.toFixed(0)}–S$${ps.ceiling.toFixed(0)} · n=${ps.n}</span>${rateStr}
+         <button onclick="addHistoricalPrice(${i})" style="background:transparent;border:0;color:var(--accent);font-size:9px;cursor:pointer;padding:0;margin-top:2px;">📅 add past</button>`
+      : `<span style="color:var(--muted);font-size:10px;">(no history)</span><br>
+         <button onclick="addHistoricalPrice(${i})" style="background:transparent;border:0;color:var(--accent);font-size:9px;cursor:pointer;padding:0;">📅 add past price</button>`;
+
+    const cls = c.classification || "WEAK";
+    return `
+      <tr${isSold ? ' style="opacity:0.65;"' : ''}>
+        <td>
+          <div style="display:flex;gap:6px;align-items:center;">
+            ${c.image_small ? `<img src="${escape(c.image_small)}" alt="" style="width:32px;height:auto;border-radius:3px;flex-shrink:0;"/>` : ""}
+            <div>${escape(c.name)}${c.is_promo ? ' <span class="pill c-MID">PROMO</span>' : ''}${soldBadge}${c.importedFrom ? ` <span class="pill c-WEAK">${c.importedFrom}</span>` : ''}${c.grade_key && c.grade_key !== "raw_nm" ? ` <span class="pill c-CHASE">${GRADE_TABLE[c.grade_key]?.short || c.grade_key}</span>` : ""}</div>
+          </div>
+        </td>
+        <td>${escape(c.set_name || "—")}</td>
+        <td>${c.rarity_key ? `<span class="pill c-STRONG">${c.rarity_key}</span>` : "—"}</td>
+        <td><span class="pill c-${cls}">${cls}</span></td>
+        <td><input type="number" min="0" step="0.01" value="${c.price_paid ?? ''}" placeholder="—"
+               style="${inputCSS}" onchange="setPaidPrice(${i}, this.value)"/></td>
+        <td>
+          <div style="display:flex; gap:3px; align-items:center;">
+            <input type="number" min="0" step="0.01" value="${c.current_price ?? ''}" placeholder="—"
+                   style="${inputCSS}" onchange="setCurrentPrice(${i}, this.value)"/>
+            <button onclick="togglePriceLock(${i})" title="${c.price_locked ? 'Locked — refresh skips this card' : 'Unlocked — refresh will overwrite'}"
+                    style="background:transparent;border:0;color:${c.price_locked ? 'var(--accent)' : 'var(--muted)'};font-size:13px;cursor:pointer;padding:0 2px;">
+              ${c.price_locked ? '🔒' : '🔓'}
+            </button>
+          </div>
+          ${c.price_source
+            ? `<div style="font-size:9px;color:var(--muted);margin-top:2px;">${escape(c.price_source)}</div>`
+            : `<div style="font-size:9px;color:var(--orange);margin-top:2px;">❓ no source</div>`}
+        </td>
+        <td>${historyCell}</td>
+        <td><input type="number" min="0" step="0.01" value="${c.sold_at_price ?? ''}" placeholder="—"
+               style="${inputCSS}" onchange="setSoldPrice(${i}, this.value)"/></td>
+        <td>${plCell}</td>
+        <td>S$${(c.predicted ?? 0).toFixed(2)}</td>
+        <td>S$${(c.p1m ?? c.predicted ?? 0).toFixed(2)}</td>
+        <td>S$${(c.p1y ?? c.predicted ?? 0).toFixed(2)}</td>
+        <td><input type="number" min="0" step="0.01" value="${c.actual_price ?? ''}" placeholder="—"
+               style="${inputCSS}" onchange="setActualPrice(${i}, this.value)"/></td>
+        <td>${errCell}</td>
+        <td>${(c.composite ?? 0).toFixed(2)}</td>
+        <td><button class="delete-btn" onclick="deleteCard(${i})">✕</button></td>
+      </tr>`;
+  }).join("");
+
+  // Summary stats
+  const summary = document.getElementById("portfolio-summary");
+  summary.style.display = "grid";
+  let invested = 0, currentValue = 0, realizedPL = 0, unrealizedPL = 0;
+  for (const c of portfolio){
+    const paid = c.price_paid ?? 0;
+    invested += paid;
+    if (c.sold_at_price != null){
+      realizedPL += (c.sold_at_price - paid);
+    } else {
+      currentValue += c.current_price;
+      unrealizedPL += (c.current_price - paid);
+    }
+  }
+  const totalPL = realizedPL + unrealizedPL;
+  const roi = invested ? (totalPL / invested * 100) : 0;
+  const fmt = v => (v >= 0 ? "+" : "") + "S$" + v.toFixed(0);
+  document.getElementById("sum-invested").textContent  = "S$" + invested.toFixed(0);
+  document.getElementById("sum-current").textContent   = "S$" + currentValue.toFixed(0);
+  document.getElementById("sum-realized").textContent  = fmt(realizedPL);
+  document.getElementById("sum-realized").style.color  = realizedPL >= 0 ? "var(--green)" : "var(--red)";
+  document.getElementById("sum-unrealized").textContent= fmt(unrealizedPL);
+  document.getElementById("sum-unrealized").style.color= unrealizedPL >= 0 ? "var(--green)" : "var(--red)";
+  document.getElementById("sum-roi").textContent       = (roi >= 0 ? "+" : "") + roi.toFixed(1) + "%";
+  document.getElementById("sum-roi").style.color       = roi >= 0 ? "var(--green)" : "var(--red)";
+}
+/* === ALL-CARD PORTFOLIO ANALYSIS ===
+   Loops through your portfolio to find patterns: which pillars actually
+   correlate with real price moves, who's winning/losing, where the model
+   is wrong. Surfaces the data needed to tune the model honestly.
+*/
+function pearsonR(x, y){
+  const n = x.length;
+  if (n < 2) return 0;
+  const mx = x.reduce((a, b) => a + b, 0) / n;
+  const my = y.reduce((a, b) => a + b, 0) / n;
+  let num = 0, dx = 0, dy = 0;
+  for (let i = 0; i < n; i++){
+    const a = x[i] - mx, b = y[i] - my;
+    num += a * b;  dx += a * a;  dy += b * b;
+  }
+  return (dx && dy) ? num / Math.sqrt(dx * dy) : 0;
+}
+
+function analyzePortfolio(){
+  if (!portfolio.length){ alert("Portfolio is empty — add cards first."); return; }
+  const cards = portfolio.filter(c => !c.is_promo);
+  if (!cards.length){ alert("No non-promo cards to analyze."); return; }
+
+  const totalValue    = cards.reduce((a, c) => a + (c.current_price || 0), 0);
+  const totalInvested = cards.reduce((a, c) => a + (c.price_paid || c.current_price || 0), 0);
+  const unrealized    = totalValue - totalInvested;
+
+  // Performance per card
+  const performance = cards.map(c => {
+    const days = c.addedAt ? Math.floor((Date.now() - new Date(c.addedAt).getTime()) / (24*3600*1000)) : 0;
+    const paid = c.price_paid || c.current_price || 0;
+    return {
+      name: c.name,
+      grade_key: c.grade_key,
+      classification: c.classification,
+      days_held: days,
+      paid, current: c.current_price || 0,
+      pl_pct:     paid ? ((c.current_price - paid) / paid * 100) : 0,
+      pl_dollars: (c.current_price || 0) - paid,
+      predicted: c.predicted || 0,
+      actual:    c.actual_price || null,
+    };
+  });
+  const top    = [...performance].sort((a, b) => b.pl_pct - a.pl_pct).slice(0, 5);
+  const bottom = [...performance].sort((a, b) => a.pl_pct - b.pl_pct).slice(0, 5);
+
+  // Class distribution
+  const classCount = {};
+  cards.forEach(c => { classCount[c.classification || "?"] = (classCount[c.classification || "?"] || 0) + 1; });
+
+  // Pillar correlations — uses actual_price as the truth signal (filled by user)
+  const calibrated = cards.filter(c => c.actual_price > 0 && c.pillar_scores && c.price_paid > 0);
+  let correlations = null;
+  if (calibrated.length >= 3){
+    correlations = {};
+    const yArr = calibrated.map(c => c.actual_price / c.price_paid);  // actual growth ratio
+    for (const pillar of ["pokemon", "art", "supply", "demand"]){
+      const xArr = calibrated.map(c => c.pillar_scores[pillar] || 0);
+      correlations[pillar] = pearsonR(xArr, yArr);
+    }
+  }
+
+  // Prediction error: |predicted - actual| / actual
+  let avgErrorPct = null, errorSamples = 0;
+  const errors = cards.filter(c => c.actual_price > 0 && c.predicted > 0)
+    .map(c => Math.abs(c.predicted - c.actual_price) / c.actual_price * 100);
+  if (errors.length){
+    avgErrorPct = errors.reduce((a, b) => a + b, 0) / errors.length;
+    errorSamples = errors.length;
+  }
+
+  renderAnalysis({
+    nCards: cards.length, totalValue, totalInvested, unrealized,
+    top, bottom, classCount, correlations,
+    avgErrorPct, errorSamples, calibratedCount: calibrated.length,
+  });
+}
+
+function renderAnalysis(r){
+  let panel = document.getElementById("analysis_panel");
+  if (!panel){
+    panel = document.createElement("div");
+    panel.id = "analysis_panel";
+    panel.className = "panel";
+    panel.style.marginTop = "24px";
+    document.body.appendChild(panel);
+  }
+  panel.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  const fmtPL = v => `<span style="color:${v>=0?'var(--green)':'var(--red)'};">${v>=0?'+':''}S$${v.toFixed(0)}</span>`;
+  const fmtPct = v => `<span style="color:${v>=0?'var(--green)':'var(--red)'};">${v>=0?'+':''}${v.toFixed(1)}%</span>`;
+
+  const topRows = r.top.map(p => `
+    <tr><td>${escape(p.name)}</td><td>${p.days_held}d</td><td>S$${p.paid.toFixed(0)}</td><td>S$${p.current.toFixed(0)}</td><td>${fmtPct(p.pl_pct)}</td></tr>
+  `).join("");
+  const bottomRows = r.bottom.map(p => `
+    <tr><td>${escape(p.name)}</td><td>${p.days_held}d</td><td>S$${p.paid.toFixed(0)}</td><td>S$${p.current.toFixed(0)}</td><td>${fmtPct(p.pl_pct)}</td></tr>
+  `).join("");
+
+  const classRows = Object.entries(r.classCount)
+    .sort((a, b) => b[1] - a[1])
+    .map(([cls, n]) => `<tr><td><span class="pill c-${cls}">${cls}</span></td><td>${n}</td><td>${(n/r.nCards*100).toFixed(0)}%</td></tr>`)
+    .join("");
+
+  let corrSection = `<div class="mini-note" style="color:var(--orange);">⚠️ Need ≥3 cards with both <strong>Actual S$</strong> filled and pillar scores to compute correlations.</div>`;
+  if (r.correlations){
+    const sorted = Object.entries(r.correlations).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+    corrSection = `
+      <table style="font-size:12px;">
+        <thead><tr><th>Pillar</th><th>Correlation with actual growth</th><th>Interpretation</th></tr></thead>
+        <tbody>${sorted.map(([k, v]) => {
+          const strength = Math.abs(v);
+          const label = strength > 0.5 ? "strong predictor" : strength > 0.25 ? "moderate" : "weak / noise";
+          const color = strength > 0.5 ? "var(--green)" : strength > 0.25 ? "var(--accent)" : "var(--muted)";
+          return `<tr><td><strong>${k}</strong></td><td style="color:${color};">${v >= 0 ? "+" : ""}${v.toFixed(2)}</td><td style="color:${color};">${label}</td></tr>`;
+        }).join("")}</tbody>
+      </table>
+      <div class="mini-note" style="margin-top:6px;">
+        Computed from ${r.calibratedCount} cards with filled actual prices.
+        Higher absolute value = pillar score better tracks reality. If <strong>demand</strong> shows correlation < 0.25,
+        it's mostly noise and could have its weight reduced.
+      </div>`;
+  }
+
+  let errorSection = `<div class="mini-note" style="color:var(--muted);">No prediction errors to measure yet — fill in <strong>Actual S$</strong> for cards you know the sold price of.</div>`;
+  if (r.avgErrorPct != null){
+    const verdict = r.avgErrorPct <= 15 ? "✅ within ±15% — model is reasonable"
+                  : r.avgErrorPct <= 30 ? "⚠️ ±15-30% — model is rough, calibrate"
+                  : "❌ >30% error — recalibrate or rethink pillars";
+    errorSection = `
+      <div class="stat-grid" style="grid-template-columns: 1fr 1fr;">
+        <div class="stat"><div class="label">Avg prediction error</div><div class="value">${r.avgErrorPct.toFixed(1)}%</div></div>
+        <div class="stat"><div class="label">Sample size</div><div class="value">${r.errorSamples}</div></div>
+      </div>
+      <div class="mini-note" style="margin-top:6px;">${verdict}</div>`;
+  }
+
+  panel.innerHTML = `
+    <h2>🔬 Portfolio Analysis</h2>
+    <div class="stat-grid" style="grid-template-columns: repeat(4, 1fr);">
+      <div class="stat"><div class="label">Cards</div><div class="value">${r.nCards}</div></div>
+      <div class="stat"><div class="label">Invested</div><div class="value">S$${r.totalInvested.toFixed(0)}</div></div>
+      <div class="stat"><div class="label">Current value</div><div class="value">S$${r.totalValue.toFixed(0)}</div></div>
+      <div class="stat"><div class="label">Unrealized P/L</div><div class="value">${fmtPL(r.unrealized)}</div></div>
+    </div>
+
+    <h3 style="margin-top:18px;">Prediction accuracy</h3>
+    ${errorSection}
+
+    <h3 style="margin-top:18px;">Pillar correlations with reality</h3>
+    ${corrSection}
+
+    <h3 style="margin-top:18px;">Class distribution</h3>
+    <table style="font-size:12px;">
+      <thead><tr><th>Class</th><th>Count</th><th>%</th></tr></thead>
+      <tbody>${classRows}</tbody>
+    </table>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px;">
+      <div>
+        <h3>📈 Top 5 performers</h3>
+        <table style="font-size:11px;">
+          <thead><tr><th>Card</th><th>Held</th><th>Paid</th><th>Now</th><th>Profit / Loss</th></tr></thead>
+          <tbody>${topRows || "<tr><td colspan=5 style='color:var(--muted);'>No data</td></tr>"}</tbody>
+        </table>
+      </div>
+      <div>
+        <h3>📉 Worst 5 performers</h3>
+        <table style="font-size:11px;">
+          <thead><tr><th>Card</th><th>Held</th><th>Paid</th><th>Now</th><th>Profit / Loss</th></tr></thead>
+          <tbody>${bottomRows || "<tr><td colspan=5 style='color:var(--muted);'>No data</td></tr>"}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+/* === FULL BACKUP / RESTORE ===
+   One JSON file holds portfolio + simulation + weights + user-added cards.
+   Lets you survive browser data wipes and move between machines.
+*/
+function exportAllData(){
+  const blob = {
+    version: 2,
+    exported_at: new Date().toISOString(),
+    portfolio,
+    simulation,
+    weights: WEIGHTS,
+    promo_weights: PROMO_WEIGHTS,
+    user_cards: JSON.parse(localStorage.getItem(USER_CARDS_KEY) || "{}"),
+  };
+  const file = new Blob([JSON.stringify(blob, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(file);
+  a.download = `pokemon_tcg_model_backup_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+
+function importAllData(){
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".json,application/json";
+  input.onchange = async e => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!confirm("Importing will REPLACE your current portfolio, simulation, weights, and custom cards. Continue?")) return;
+    try {
+      const data = JSON.parse(await file.text());
+      if (data.portfolio){ portfolio = data.portfolio; savePortfolio(); }
+      if (data.simulation){ simulation = data.simulation; saveSim(); }
+      if (data.weights){ WEIGHTS = data.weights; saveWeights(); }
+      if (data.promo_weights){ PROMO_WEIGHTS = data.promo_weights; saveWeights(); }
+      if (data.user_cards){ saveUserCards(data.user_cards); }
+      renderPortfolio();
+      renderSim();
+      alert(`✅ Imported successfully${data.exported_at ? ` (from ${data.exported_at.slice(0,10)})` : ""}.\n\nPortfolio: ${portfolio.length} cards · Sim positions: ${simulation.positions?.length || 0}`);
+    } catch (err){
+      alert("Import failed: " + err.message);
+    }
+  };
+  input.click();
+}
+
+function exportCSV(){
+  if (portfolio.length === 0) { alert("Portfolio is empty"); return; }
+  const headers = ["name","set_name","rarity_key","rarity_label","grade_key","grade_label","pop_report","classification","price_paid","current_price","sold_at_price","predicted","actual_price","p1m","p3m","p6m","p1y","composite","is_promo","addedAt"];
+  const rows = portfolio.map(c => headers.map(h => JSON.stringify(c[h] ?? "")).join(","));
+  const csv = headers.join(",") + "\n" + rows.join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `pokemon_portfolio_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+function escape(s){ return String(s).replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// Initialize on page load — start empty, don't preload any set/card/prediction
+populateSetDropdown();
+populateCatalystCheckboxes();
+updateDemand(7.5);
+updateSupply(1.0);
+renderPortfolio();
+renderSim();
+checkProxy();
+
+function populateCatalystCheckboxes(){
+  const box = document.getElementById("catalyst_box");
+  if (!box) return;
+  box.innerHTML = Object.entries(CATALYSTS).map(([key, c]) => `
+    <label style="display:flex;align-items:center;gap:4px;color:${c.bearish ? 'var(--red)' : 'var(--green)'};">
+      <input type="checkbox" class="catalyst" value="${key}" style="width:14px;height:14px;"/>
+      <span style="color:var(--text);font-size:11px;">${c.label}
+        <span style="color:var(--muted);">(×${c.mult.toFixed(2)})</span>
+      </span>
+    </label>`).join("");
+}
+</script>
+
+</body>
+</html>
